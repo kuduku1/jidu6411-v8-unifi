@@ -1,0 +1,2502 @@
+From 4f460bd84d7a18860dcb75d3aaa8edfe7439ad95 Mon Sep 17 00:00:00 2001
+From: Sandeep Sondagar <sandeepsondagar@gmail.com>
+Date: Fri, 7 Aug 2026 23:48:31 +0530
+Subject: [PATCH 4/5] qualcommbe: add JioRouter AX6000 (JIDU6J11 series)
+ support
+
+This adds OpenWrt support for the JioRouter AX6000 (JIDU6J11 series)
+Wi-Fi 6 router based on Qualcomm IPQ9554. All five SKUs (JIDU6111,
+JIDU6411, JIDU6611, JIDU6811, JIDU6911) share the same underlying
+hardware baseline, differing only in physical antenna configuration.
+
+Hardware specification:
+- SoC: Qualcomm IPQ9554 (4x ARM Cortex-A73 @ 1.5 GHz)
+- RAM: 512 MB DDR4
+- Flash: 256 MB SPI NAND
+- Ethernet: 5x 10/100/1000 Mbps (1 WAN + 4 LAN via QCA8075)
+- WiFi 2.4 GHz: Integrated IPQ95XX AHB, 802.11b/g/n/ax, 4x4 MIMO (ath11k)
+- WiFi 5 GHz: QCN9074 PCIe, 802.11a/n/ac/ax, 4x4 MIMO (ath11k)
+- Expansion: 1x USB 3.0
+- LEDs: 3x GPIO-controlled (Red, Green, Blue)
+- Buttons: 1x Reset
+- UART: 115200 8N1 (3.3V TX/RX/GND header on board)
+- Power supply: 12V DC, 2.5A
+
+MAC address layout:
+- WAN / Label: ART partition, offset 0x00
+- LAN: WAN + 1
+- 2.4 GHz: WAN + 2
+- 5 GHz: WAN + 3
+
+SoC enablement backports:
+- dt-bindings: clk: qcom: ipq9574: add WCSS Q6 clocks
+- clk: qcom: gcc-ipq9574: add WCSS Q6 clocks
+- remoteproc: qcom_q6v5_wcss: add IPQ9574 support
+
+Dependencies: the integrated 2.4 GHz radio additionally requires the
+companion "mac80211: enable IPQ9574 AHB support" and "mac80211: add
+driver patches for IPQ9574" commits, which add the ath11k AHB driver
+(qcom,ipq9574-wifi compatible) and the ath11k-firmware-ipq9574 board
+firmware package. The qcom,ipq9574-wcss-pil remoteproc driver is
+provided by the remoteproc backport listed above.
+
+The base-files scripts extract the ath11k calibration data via
+caldata_extract, set up the U-Boot mtdparts for the ubi partition, and
+perform nand_do_upgrade for sysupgrade.
+
+Note: each of the five SKUs is described by a separate device-tree file
+because ath11k does not support nvmem-based calibration-variant lookups;
+it only accepts the "qcom,ath11k-calibration-variant" value as a DT
+string literal. Since each SKU needs its own board-specific BDF variant
+string, a distinct compatible string and DTS file is required per SKU so
+the correct calibration data gets selected.
+
+Flashing instructions (TFTP + initramfs):
+Note: "6111" in the image filenames is the SKU code; replace it with the
+SKU code of your device (e.g. 6411, 6611, 6811 or 6911).
+1. Connect a 3.3V USB-to-UART adapter to the serial header (115200 baud).
+2. Set a static IP on your computer (e.g., 192.168.1.2/24).
+3. Place the initramfs image into your TFTP server root directory:
+   openwrt-qualcommbe-ipq95xx-jiorouter_ax6000-jidu6j11-6111-initramfs-uImage.itb
+4. Power on the router and interrupt autoboot in the serial console.
+5. Boot the initramfs image from U-Boot:
+   setenv ipaddr 192.168.1.1
+   setenv serverip 192.168.1.2
+   tftpboot 0x44000000 openwrt-qualcommbe-ipq95xx-jiorouter_ax6000-jidu6j11-6111-initramfs-uImage.itb
+   bootm 0x44000000
+6. Transfer the sysupgrade image to /tmp and flash it:
+   sysupgrade /tmp/openwrt-qualcommbe-ipq95xx-jiorouter_ax6000-jidu6j11-6111-squashfs-sysupgrade.bin
+
+Signed-off-by: Sandeep Sondagar <sandeepsondagar@gmail.com>
+(cherry picked from commit 5fd1685cf3dfc6d63c92e78781f8f433bc9863af)
+---
+ .../uboot-envtools/files/qualcommbe_ipq95xx   |   3 +
+ package/firmware/ipq-wifi/Makefile            |  10 +-
+ ...ipq9554-jiorouter-ax6000-jidu6j11-6111.dts |  18 +
+ ...ipq9554-jiorouter-ax6000-jidu6j11-6411.dts |  18 +
+ ...ipq9554-jiorouter-ax6000-jidu6j11-6611.dts |  18 +
+ ...ipq9554-jiorouter-ax6000-jidu6j11-6811.dts |  18 +
+ ...ipq9554-jiorouter-ax6000-jidu6j11-6911.dts |  18 +
+ .../ipq9554-jiorouter-ax6000-jidu6j11.dtsi    | 882 ++++++++++++++++++
+ target/linux/qualcommbe/image/ipq95xx.mk      |  51 +
+ .../ipq95xx/base-files/etc/board.d/02_network |   7 +
+ .../etc/hotplug.d/firmware/11-ath11k-caldata  |  35 +
+ .../base-files/lib/upgrade/platform.sh        |  55 +-
+ ...-clk-qcom-ipq9574-add-wcss-q6-clocks.patch |  79 ++
+ ...-qcom-gcc-ipq9574-add-wcss-q6-clocks.patch | 489 ++++++++++
+ ...c-qcom-q6v5-wcss-add-ipq9574-support.patch | 541 +++++++++++
+ 15 files changed, 2226 insertions(+), 16 deletions(-)
+ create mode 100644 target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11-6111.dts
+ create mode 100644 target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11-6411.dts
+ create mode 100644 target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11-6611.dts
+ create mode 100644 target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11-6811.dts
+ create mode 100644 target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11-6911.dts
+ create mode 100644 target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11.dtsi
+ create mode 100644 target/linux/qualcommbe/ipq95xx/base-files/etc/hotplug.d/firmware/11-ath11k-caldata
+ create mode 100644 target/linux/qualcommbe/patches-6.18/0702-dt-bindings-clk-qcom-ipq9574-add-wcss-q6-clocks.patch
+ create mode 100644 target/linux/qualcommbe/patches-6.18/0703-clk-qcom-gcc-ipq9574-add-wcss-q6-clocks.patch
+ create mode 100644 target/linux/qualcommbe/patches-6.18/0704-remoteproc-qcom-q6v5-wcss-add-ipq9574-support.patch
+
+diff --git a/package/boot/uboot-tools/uboot-envtools/files/qualcommbe_ipq95xx b/package/boot/uboot-tools/uboot-envtools/files/qualcommbe_ipq95xx
+index cf89850f..c23b5fdf 100644
+--- a/package/boot/uboot-tools/uboot-envtools/files/qualcommbe_ipq95xx
++++ b/package/boot/uboot-tools/uboot-envtools/files/qualcommbe_ipq95xx
+@@ -15,6 +15,9 @@ askey,sbe1v1k)
+ linksys,ln6001)
+ 	ubootenv_add_mmc "u_env" "" "0x0" "0x40000" "0x40000"
+ 	;;
++jiorouter,ax6000-jidu6j11*)
++	ubootenv_add_mtd "0:APPSBLENV" "0x0" "0x40000" "0x20000"
++	;;
+ esac
+ 
+ config_load ubootenv
+diff --git a/package/firmware/ipq-wifi/Makefile b/package/firmware/ipq-wifi/Makefile
+index c58198e6..e050c748 100644
+--- a/package/firmware/ipq-wifi/Makefile
++++ b/package/firmware/ipq-wifi/Makefile
+@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
+ include $(INCLUDE_DIR)/version.mk
+ 
+ PKG_NAME:=ipq-wifi
+-PKG_RELEASE:=1
++PKG_RELEASE:=2
+ 
+ PKG_SOURCE_PROTO:=git
+ PKG_SOURCE_URL=$(PROJECT_GIT)/project/firmware/qca-wireless.git
+@@ -52,6 +52,7 @@ ALLWIFIBOARDS:= \
+ 	iodata_wn-dax3000gr \
+ 	jdcloud_re-cs-02 \
+ 	jdcloud_re-ss-01 \
++	jiorouter_ax6000-jidu6j11 \
+ 	link_nn6000 \
+ 	linksys_homewrk \
+ 	linksys_mr5500 \
+@@ -176,6 +177,8 @@ define ipq-wifi-install-one
+     $(call ipq-wifi-install-ath11-one-to,$(1),$(2),IPQ6018/hw1.0),\
+   $(if $(filter $(suffix $(1)),.IPQ8074 .ipq8074),\
+     $(call ipq-wifi-install-ath11-one-to,$(1),$(2),IPQ8074/hw2.0),\
++  $(if $(filter $(suffix $(1)),.IPQ9574 .ipq9574),\
++    $(call ipq-wifi-install-ath11-one-to,$(1),$(2),IPQ9574/hw1.0),\
+   $(if $(filter $(suffix $(1)),.QCN6122 .qcn6122),\
+     $(call ipq-wifi-install-ath11-one-to,$(1),$(2),QCN6122/hw1.0),\
+   $(if $(filter $(suffix $(1)),.QCN9074 .qcn9074),\
+@@ -183,7 +186,7 @@ define ipq-wifi-install-one
+   $(if $(filter $(suffix $(1)),.QCN9274 .qcn9274),\
+     $(call ipq-wifi-install-ath12-one-to,$(1),$(2),QCN9274/hw2.0),\
+     $(error Unrecognized board-file suffix '$(suffix $(1))' for '$(1)')\
+-  ))))))))))))
++  )))))))))))))
+ 
+ endef
+ # Blank line required at end of above define due to foreach context
+@@ -231,7 +234,7 @@ endef
+ # 2. Add $(eval $(call generate-ipq-wifi-package,<devicename>,<display name>))
+ #
+ # Board files should follow this name structure:
+-#   board-<devicename>.<qca4019|qca9888|qca9889|qca9984|qca99x0|ipq6018|ipq8074>
++#   board-<devicename>.<qca4019|qca9888|qcn9074|qca9889|qca9984|qca99x0|ipq6018|ipq8074|ipq9574>
+ 
+ $(eval $(call generate-ipq-wifi-package,8devices_kiwi,8devices Kiwi))
+ $(eval $(call generate-ipq-wifi-package,8devices_mango,8devices Mango))
+@@ -258,6 +261,7 @@ $(eval $(call generate-ipq-wifi-package,ignitenet_ss-w2-ac2600,Ignitenet SS-W2-A
+ $(eval $(call generate-ipq-wifi-package,iodata_wn-dax3000gr,I-O DATA WN-DAX3000GR))
+ $(eval $(call generate-ipq-wifi-package,jdcloud_re-cs-02,JDCloud RE-CS-02))
+ $(eval $(call generate-ipq-wifi-package,jdcloud_re-ss-01,JDCloud RE-SS-01))
++$(eval $(call generate-ipq-wifi-package,jiorouter_ax6000-jidu6j11,JioRouter AX6000 JIDU6J11))
+ $(eval $(call generate-ipq-wifi-package,link_nn6000,Link NN6000))
+ $(eval $(call generate-ipq-wifi-package,linksys_homewrk,Linksys HomeWRK))
+ $(eval $(call generate-ipq-wifi-package,linksys_mr5500,Linksys MR5500))
+diff --git a/target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11-6111.dts b/target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11-6111.dts
+new file mode 100644
+index 00000000..524f2385
+--- /dev/null
++++ b/target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11-6111.dts
+@@ -0,0 +1,18 @@
++// SPDX-License-Identifier: (GPL-2.0 OR MIT)
++
++/dts-v1/;
++
++#include "ipq9554-jiorouter-ax6000-jidu6j11.dtsi"
++
++/ {
++	model = "JioRouter AX6000 JIDU6J11-6111";
++	compatible = "jiorouter,ax6000-jidu6j11-6111", "jiorouter,ax6000-jidu6j11", "qcom,ipq9574";
++};
++
++&wifi0 {
++	qcom,ath11k-calibration-variant = "JIDU6J11-6111";
++};
++
++&wifi1 {
++	qcom,ath11k-calibration-variant = "JIDU6J11-6111";
++};
+diff --git a/target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11-6411.dts b/target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11-6411.dts
+new file mode 100644
+index 00000000..24e7b08d
+--- /dev/null
++++ b/target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11-6411.dts
+@@ -0,0 +1,18 @@
++// SPDX-License-Identifier: (GPL-2.0 OR MIT)
++
++/dts-v1/;
++
++#include "ipq9554-jiorouter-ax6000-jidu6j11.dtsi"
++
++/ {
++	model = "JioRouter AX6000 JIDU6J11-6411";
++	compatible = "jiorouter,ax6000-jidu6j11-6411", "jiorouter,ax6000-jidu6j11", "qcom,ipq9574";
++};
++
++&wifi0 {
++	qcom,ath11k-calibration-variant = "JIDU6J11-6411";
++};
++
++&wifi1 {
++	qcom,ath11k-calibration-variant = "JIDU6J11-6411";
++};
+diff --git a/target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11-6611.dts b/target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11-6611.dts
+new file mode 100644
+index 00000000..12c4df26
+--- /dev/null
++++ b/target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11-6611.dts
+@@ -0,0 +1,18 @@
++// SPDX-License-Identifier: (GPL-2.0 OR MIT)
++
++/dts-v1/;
++
++#include "ipq9554-jiorouter-ax6000-jidu6j11.dtsi"
++
++/ {
++	model = "JioRouter AX6000 JIDU6J11-6611";
++	compatible = "jiorouter,ax6000-jidu6j11-6611", "jiorouter,ax6000-jidu6j11", "qcom,ipq9574";
++};
++
++&wifi0 {
++	qcom,ath11k-calibration-variant = "JIDU6J11-6611";
++};
++
++&wifi1 {
++	qcom,ath11k-calibration-variant = "JIDU6J11-6611";
++};
+diff --git a/target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11-6811.dts b/target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11-6811.dts
+new file mode 100644
+index 00000000..aba6fed7
+--- /dev/null
++++ b/target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11-6811.dts
+@@ -0,0 +1,18 @@
++// SPDX-License-Identifier: (GPL-2.0 OR MIT)
++
++/dts-v1/;
++
++#include "ipq9554-jiorouter-ax6000-jidu6j11.dtsi"
++
++/ {
++	model = "JioRouter AX6000 JIDU6J11-6811";
++	compatible = "jiorouter,ax6000-jidu6j11-6811", "jiorouter,ax6000-jidu6j11", "qcom,ipq9574";
++};
++
++&wifi0 {
++	qcom,ath11k-calibration-variant = "JIDU6J11-6811";
++};
++
++&wifi1 {
++	qcom,ath11k-calibration-variant = "JIDU6J11-6811";
++};
+diff --git a/target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11-6911.dts b/target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11-6911.dts
+new file mode 100644
+index 00000000..1726e63c
+--- /dev/null
++++ b/target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11-6911.dts
+@@ -0,0 +1,18 @@
++// SPDX-License-Identifier: (GPL-2.0 OR MIT)
++
++/dts-v1/;
++
++#include "ipq9554-jiorouter-ax6000-jidu6j11.dtsi"
++
++/ {
++	model = "JioRouter AX6000 JIDU6J11-6911";
++	compatible = "jiorouter,ax6000-jidu6j11-6911", "jiorouter,ax6000-jidu6j11", "qcom,ipq9574";
++};
++
++&wifi0 {
++	qcom,ath11k-calibration-variant = "JIDU6J11-6911";
++};
++
++&wifi1 {
++	qcom,ath11k-calibration-variant = "JIDU6J11-6911";
++};
+diff --git a/target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11.dtsi b/target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11.dtsi
+new file mode 100644
+index 00000000..f4dea366
+--- /dev/null
++++ b/target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11.dtsi
+@@ -0,0 +1,882 @@
++// SPDX-License-Identifier: (GPL-2.0 OR MIT)
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/input/input.h>
++#include <dt-bindings/leds/common.h>
++
++#include "ipq9574.dtsi"
++
++/ {
++	model = "JioRouter AX6000 JIDU6J11";
++	compatible = "jiorouter,ax6000-jidu6j11", "qcom,ipq9574";
++
++	aliases {
++		serial0 = &blsp1_uart2;
++		led-boot = &led_red;
++		led-failsafe = &led_red;
++		led-running = &led_green;
++		led-upgrade = &led_blue;
++	};
++
++	chosen {
++		stdout-path = "serial0:115200n8";
++	};
++
++	memory@40000000 {
++		device_type = "memory";
++		reg = <0x0 0x40000000 0x0 0x20000000>;
++	};
++
++	gpio-keys {
++		compatible = "gpio-keys";
++		pinctrl-0 = <&gpio_keys_default>;
++		pinctrl-names = "default";
++
++		button-reset {
++			label = "reset";
++			linux,code = <KEY_RESTART>;
++			gpios = <&tlmm 10 GPIO_ACTIVE_LOW>;
++		};
++	};
++
++	leds {
++		compatible = "gpio-leds";
++		pinctrl-0 = <&gpio_leds_default>;
++		pinctrl-names = "default";
++
++		led_red: led-0 {
++			function = LED_FUNCTION_STATUS;
++			color = <LED_COLOR_ID_RED>;
++			gpios = <&tlmm 6 GPIO_ACTIVE_HIGH>;
++			default-state = "on";
++		};
++
++		led_green: led-1 {
++			function = LED_FUNCTION_STATUS;
++			color = <LED_COLOR_ID_GREEN>;
++			gpios = <&tlmm 16 GPIO_ACTIVE_HIGH>;
++			default-state = "off";
++		};
++
++		led_blue: led-2 {
++			function = LED_FUNCTION_STATUS;
++			color = <LED_COLOR_ID_BLUE>;
++			gpios = <&tlmm 17 GPIO_ACTIVE_HIGH>;
++			default-state = "off";
++		};
++	};
++
++	ipq9574_s1: regulator-cpu {
++		compatible = "regulator-fixed";
++		regulator-min-microvolt = <1075000>;
++		regulator-max-microvolt = <1075000>;
++		regulator-boot-on;
++		regulator-always-on;
++		regulator-name = "cpu-vdd";
++	};
++
++	vdd_3p3: regulator-3p3 {
++		compatible = "regulator-fixed";
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		regulator-boot-on;
++		regulator-always-on;
++		regulator-name = "fixed_3p3";
++	};
++
++	vdd_0p925: regulator-0p925 {
++		compatible = "regulator-fixed";
++		regulator-min-microvolt = <925000>;
++		regulator-max-microvolt = <925000>;
++		regulator-boot-on;
++		regulator-always-on;
++		regulator-name = "fixed_0p925";
++	};
++
++	vdd_usb_phy: vdd-usb-phy {
++		compatible = "regulator-fixed";
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
++		regulator-boot-on;
++		regulator-always-on;
++		vin-supply = <&vdd_3p3>;
++		regulator-name = "vdd_usb_phy";
++	};
++
++	reserved-memory {
++		q6_region: wcnss@4ab00000 {
++			no-map;
++			reg = <0x0 0x4ab00000 0x0 0x2d00000>;
++		};
++	};
++
++	wcss_smp2p: smp2p-wcss {
++		compatible = "qcom,smp2p";
++		qcom,smem = <435>, <428>;
++		interrupt-parent = <&intc>;
++		interrupts = <GIC_SPI 322 IRQ_TYPE_EDGE_RISING>;
++		mboxes = <&apcs_glb 9>;
++		qcom,local-pid = <0>;
++		qcom,remote-pid = <1>;
++
++		wcss_smp2p_out: master-kernel {
++			qcom,entry-name = "master-kernel";
++			#qcom,smem-state-cells = <1>;
++		};
++
++		wcss_smp2p_in: slave-kernel {
++			qcom,entry-name = "slave-kernel";
++			interrupt-controller;
++			#interrupt-cells = <2>;
++		};
++	};
++};
++
++&cpu_opp_table {
++	opp-936000000 {
++		opp-microvolt = <1075000>;
++	};
++
++	opp-1104000000 {
++		opp-microvolt = <1075000>;
++	};
++
++	opp-1200000000 {
++		opp-microvolt = <1075000>;
++	};
++
++	opp-1416000000 {
++		opp-microvolt = <1075000>;
++	};
++
++	opp-1488000000 {
++		opp-microvolt = <1075000>;
++	};
++};
++
++&blsp1_uart2 {
++	pinctrl-0 = <&uart2_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++};
++
++&crypto {
++	status = "disabled";
++};
++
++&cryptobam {
++	status = "disabled";
++};
++
++&rpm {
++	status = "disabled";
++};
++
++&qcom_ppe {
++	assigned-clocks = <&nsscc NSS_CC_PORT1_RX_CLK_SRC>,
++			   <&nsscc NSS_CC_PORT1_TX_CLK_SRC>,
++			   <&nsscc NSS_CC_PORT2_RX_CLK_SRC>,
++			   <&nsscc NSS_CC_PORT2_TX_CLK_SRC>,
++			   <&nsscc NSS_CC_PORT3_RX_CLK_SRC>,
++			   <&nsscc NSS_CC_PORT3_TX_CLK_SRC>,
++			   <&nsscc NSS_CC_PORT4_RX_CLK_SRC>,
++			   <&nsscc NSS_CC_PORT4_TX_CLK_SRC>,
++			   <&nsscc NSS_CC_PORT5_RX_CLK_SRC>,
++			   <&nsscc NSS_CC_PORT5_TX_CLK_SRC>;
++
++	assigned-clock-rates = <125000000>, <125000000>, <125000000>,
++			       <125000000>, <125000000>, <125000000>,
++			       <125000000>, <125000000>, <125000000>,
++			       <125000000>;
++
++	ethernet-ports {
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		port@1 {
++			reg = <1>;
++			label = "wan";
++			phy-mode = "psgmii";
++			managed = "in-band-status";
++			nvmem-cells = <&base_mac 0>;
++			nvmem-cell-names = "mac-address";
++			phy-handle = <&qca8075_0>;
++			pcs-handle = <&pcs0_ch0>;
++			clocks = <&nsscc NSS_CC_PORT1_MAC_CLK>,
++				 <&nsscc NSS_CC_PORT1_RX_CLK>,
++				 <&nsscc NSS_CC_PORT1_TX_CLK>;
++			clock-names = "mac",
++				      "rx",
++				      "tx";
++			resets = <&nsscc PORT1_MAC_ARES>,
++				 <&nsscc PORT1_RX_ARES>,
++				 <&nsscc PORT1_TX_ARES>;
++			reset-names = "mac",
++				      "rx",
++				      "tx";
++		};
++
++		port@2 {
++			reg = <2>;
++			label = "lan1";
++			phy-mode = "psgmii";
++			managed = "in-band-status";
++			nvmem-cells = <&base_mac 1>;
++			nvmem-cell-names = "mac-address";
++			phy-handle = <&qca8075_1>;
++			pcs-handle = <&pcs0_ch1>;
++			clocks = <&nsscc NSS_CC_PORT2_MAC_CLK>,
++				 <&nsscc NSS_CC_PORT2_RX_CLK>,
++				 <&nsscc NSS_CC_PORT2_TX_CLK>;
++			clock-names = "mac",
++				      "rx",
++				      "tx";
++			resets = <&nsscc PORT2_MAC_ARES>,
++				 <&nsscc PORT2_RX_ARES>,
++				 <&nsscc PORT2_TX_ARES>;
++			reset-names = "mac",
++				      "rx",
++				      "tx";
++		};
++
++		port@3 {
++			reg = <3>;
++			label = "lan2";
++			phy-mode = "psgmii";
++			managed = "in-band-status";
++			nvmem-cells = <&base_mac 1>;
++			nvmem-cell-names = "mac-address";
++			phy-handle = <&qca8075_2>;
++			pcs-handle = <&pcs0_ch2>;
++			clocks = <&nsscc NSS_CC_PORT3_MAC_CLK>,
++				 <&nsscc NSS_CC_PORT3_RX_CLK>,
++				 <&nsscc NSS_CC_PORT3_TX_CLK>;
++			clock-names = "mac",
++				      "rx",
++				      "tx";
++			resets = <&nsscc PORT3_MAC_ARES>,
++				 <&nsscc PORT3_RX_ARES>,
++				 <&nsscc PORT3_TX_ARES>;
++			reset-names = "mac",
++				      "rx",
++				      "tx";
++		};
++
++		port@4 {
++			reg = <4>;
++			label = "lan3";
++			phy-mode = "psgmii";
++			managed = "in-band-status";
++			nvmem-cells = <&base_mac 1>;
++			nvmem-cell-names = "mac-address";
++			phy-handle = <&qca8075_3>;
++			pcs-handle = <&pcs0_ch3>;
++			clocks = <&nsscc NSS_CC_PORT4_MAC_CLK>,
++				 <&nsscc NSS_CC_PORT4_RX_CLK>,
++				 <&nsscc NSS_CC_PORT4_TX_CLK>;
++			clock-names = "mac",
++				      "rx",
++				      "tx";
++			resets = <&nsscc PORT4_MAC_ARES>,
++				 <&nsscc PORT4_RX_ARES>,
++				 <&nsscc PORT4_TX_ARES>;
++			reset-names = "mac",
++				      "rx",
++				      "tx";
++		};
++
++		port@5 {
++			reg = <5>;
++			label = "lan4";
++			phy-mode = "psgmii";
++			managed = "in-band-status";
++			nvmem-cells = <&base_mac 1>;
++			nvmem-cell-names = "mac-address";
++			phy-handle = <&qca8075_4>;
++			pcs-handle = <&pcs0_ch4>;
++			clocks = <&nsscc NSS_CC_PORT5_MAC_CLK>,
++				 <&nsscc NSS_CC_PORT5_RX_CLK>,
++				 <&nsscc NSS_CC_PORT5_TX_CLK>;
++			clock-names = "mac",
++				      "rx",
++				      "tx";
++			resets = <&nsscc PORT5_MAC_ARES>,
++				 <&nsscc PORT5_RX_ARES>,
++				 <&nsscc PORT5_TX_ARES>;
++			reset-names = "mac",
++				      "rx",
++				      "tx";
++		};
++	};
++};
++
++&mdio {
++	status = "okay";
++	reset-gpios = <&tlmm 60 GPIO_ACTIVE_LOW>;
++
++	ethernet-phy-package@10 {
++		#address-cells = <1>;
++		#size-cells = <0>;
++		compatible = "qcom,qca8075-package";
++		reg = <0x10>;
++
++		qca8075_0: ethernet-phy@10 {
++			reg = <0x10>;
++		};
++
++		qca8075_1: ethernet-phy@11 {
++			reg = <0x11>;
++		};
++
++		qca8075_2: ethernet-phy@12 {
++			reg = <0x12>;
++		};
++
++		qca8075_3: ethernet-phy@13 {
++			reg = <0x13>;
++		};
++
++		qca8075_4: ethernet-phy@14 {
++			reg = <0x14>;
++		};
++	};
++};
++
++&pcs0 {
++	pcs0_ch4: pcs-mii@4 {
++		reg = <4>;
++		clocks = <&nsscc NSS_CC_UNIPHY_PORT5_RX_CLK>,
++			 <&nsscc NSS_CC_UNIPHY_PORT5_TX_CLK>;
++		clock-names = "rx", "tx";
++	};
++};
++
++&pcs1 {
++	status = "disabled";
++};
++
++&pcs2 {
++	status = "disabled";
++};
++
++&pcie1_phy {
++	status = "okay";
++};
++
++&pcie1 {
++	pinctrl-0 = <&pcie_qcn9074_pins>;
++	pinctrl-names = "default";
++	perst-gpios = <&tlmm 26 GPIO_ACTIVE_LOW>;
++	status = "okay";
++
++	pcie@0 {
++		device_type = "pci";
++		reg = <0x0 0x0 0x0 0x0 0x0>;
++		bus-range = <0x01 0xff>;
++
++		#address-cells = <3>;
++		#size-cells = <2>;
++		ranges;
++
++		wifi1: wifi@0,0 {
++			compatible = "pci17cb,1104";
++			reg = <0x00010000 0 0 0 0>;
++			qcom,ath11k-fw-memory-mode = <2>;
++			nvmem-cells = <&base_mac 3>;
++			nvmem-cell-names = "mac-address";
++		};
++	};
++};
++
++&qpic_bam {
++	status = "okay";
++};
++
++&qpic_nand {
++	pinctrl-0 = <&qpic_snand_default_state>;
++	pinctrl-names = "default";
++	status = "okay";
++
++	flash@0 {
++		compatible = "spi-nand";
++		reg = <0>;
++		#address-cells = <1>;
++		#size-cells = <1>;
++		nand-ecc-engine = <&qpic_nand>;
++
++		partitions {
++			compatible = "fixed-partitions";
++			#address-cells = <1>;
++			#size-cells = <1>;
++
++			partition@0 {
++				label = "0:SBL1";
++				reg = <0x00000000 0x00180000>;
++				read-only;
++			};
++
++			partition@180000 {
++				label = "0:SBL1_1";
++				reg = <0x00180000 0x00180000>;
++				read-only;
++			};
++
++			partition@300000 {
++				label = "0:MIBIB";
++				reg = <0x00300000 0x00100000>;
++				read-only;
++			};
++
++			partition@400000 {
++				label = "0:BOOTCONFIG";
++				reg = <0x00400000 0x00080000>;
++				read-only;
++			};
++
++			partition@480000 {
++				label = "0:BOOTCONFIG1";
++				reg = <0x00480000 0x00080000>;
++				read-only;
++			};
++
++			partition@500000 {
++				label = "0:QSEE";
++				reg = <0x00500000 0x00380000>;
++				read-only;
++			};
++
++			partition@880000 {
++				label = "0:QSEE_1";
++				reg = <0x00880000 0x00380000>;
++				read-only;
++			};
++
++			partition@c00000 {
++				label = "0:DEVCFG_1";
++				reg = <0x00c00000 0x00080000>;
++				read-only;
++			};
++
++			partition@c80000 {
++				label = "0:DEVCFG";
++				reg = <0x00c80000 0x00080000>;
++				read-only;
++			};
++
++			partition@d00000 {
++				label = "0:APDP_1";
++				reg = <0x00d00000 0x00080000>;
++				read-only;
++			};
++
++			partition@d80000 {
++				label = "0:APDP";
++				reg = <0x00d80000 0x00080000>;
++				read-only;
++			};
++
++			partition@e00000 {
++				label = "0:TME";
++				reg = <0x00e00000 0x00080000>;
++				read-only;
++			};
++
++			partition@e80000 {
++				label = "0:TME_1";
++				reg = <0x00e80000 0x00080000>;
++				read-only;
++			};
++
++			partition@f00000 {
++				label = "0:RPM_1";
++				reg = <0x00f00000 0x00080000>;
++				read-only;
++			};
++
++			partition@f80000 {
++				label = "0:RPM";
++				reg = <0x00f80000 0x00080000>;
++				read-only;
++			};
++
++			partition@1000000 {
++				label = "0:CDT_1";
++				reg = <0x01000000 0x00080000>;
++				read-only;
++			};
++
++			partition@1080000 {
++				label = "0:CDT";
++				reg = <0x01080000 0x00080000>;
++				read-only;
++			};
++
++			partition@1100000 {
++				label = "0:APPSBLENV";
++				reg = <0x01100000 0x00080000>;
++			};
++
++			partition@1180000 {
++				label = "0:APPSBL_1";
++				reg = <0x01180000 0x00180000>;
++				read-only;
++			};
++
++			partition@1300000 {
++				label = "0:APPSBL";
++				reg = <0x01300000 0x00180000>;
++				read-only;
++			};
++
++			art: partition@1480000 {
++				label = "0:ART";
++				reg = <0x01480000 0x00100000>;
++				read-only;
++
++				nvmem-layout {
++					compatible = "fixed-layout";
++					#address-cells = <0x01>;
++					#size-cells = <0x01>;
++
++					base_mac: base-mac@0 {
++						compatible = "mac-base";
++						reg = <0x0 0x6>;
++						#nvmem-cell-cells = <1>;
++					};
++				};
++			};
++
++			partition@1580000 {
++				label = "0:ETHPHYFW";
++				reg = <0x01580000 0x00100000>;
++				read-only;
++			};
++
++			partition@1680000 {
++				label = "0:TRAINING";
++				reg = <0x01680000 0x00080000>;
++				read-only;
++			};
++
++			partition@1700000 {
++				label = "ubi";
++				reg = <0x01700000 0x0e100000>;
++			};
++
++			partition@f800000 {
++				label = "Jio-Reserved";
++				reg = <0x0f800000 0x00200000>;
++				read-only;
++			};
++
++			partition@fa00000 {
++				label = "MFG";
++				reg = <0x0fa00000 0x00200000>;
++				read-only;
++			};
++
++			partition@fc00000 {
++				label = "0:BDF";
++				reg = <0x0fc00000 0x00200000>;
++				read-only;
++			};
++		};
++	};
++};
++
++&sleep_clk {
++	clock-frequency = <32000>;
++};
++
++&tlmm {
++	gpio_keys_default: gpio-keys-default-state {
++		pins = "gpio10";
++		function = "gpio";
++		drive-strength = <8>;
++		bias-pull-up;
++	};
++
++	gpio_leds_default: gpio-leds-default-state {
++		pins = "gpio6", "gpio16", "gpio17";
++		function = "gpio";
++		drive-strength = <8>;
++		bias-pull-up;
++	};
++
++	qpic_snand_default_state: qpic-snand-default-state {
++		clock-pins {
++			pins = "gpio5";
++			function = "qspi_clk";
++			drive-strength = <8>;
++			bias-disable;
++		};
++
++		cs-pins {
++			pins = "gpio4";
++			function = "qspi_cs";
++			drive-strength = <8>;
++			bias-disable;
++		};
++
++		data-pins {
++			pins = "gpio0", "gpio1", "gpio2", "gpio3";
++			function = "qspi_data";
++			drive-strength = <8>;
++			bias-disable;
++		};
++	};
++
++	/* PCIe 1 (QCN9074 5GHz) */
++	pcie_qcn9074_pins: pcie-qcn9074-state {
++		clkreq-n-pins {
++			pins = "gpio25";
++			function = "pcie1_clk";
++			drive-strength = <6>;
++			bias-pull-up;
++		};
++
++		perst-n-pins {
++			pins = "gpio26";
++			function = "gpio";
++			drive-strength = <8>;
++			bias-pull-up;
++			output-low;
++		};
++		wake-n-pins {
++			pins = "gpio27";
++			function = "pcie1_wake";
++			drive-strength = <6>;
++			bias-pull-up;
++		};
++	};
++
++	usb_supply_pin: usb-supply-pin {
++		pins = "gpio64";
++		function = "gpio";
++		drive-strength = <8>;
++		bias-pull-up;
++		output-high;
++	};
++};
++
++&usb_0_dwc3 {
++	dr_mode = "host";
++};
++
++&usb_0_qmpphy {
++	vdda-pll-supply = <&vdd_usb_phy>;
++	vdda-phy-supply = <&vdd_0p925>;
++	status = "okay";
++};
++
++&usb_0_qusbphy {
++	vdd-supply = <&vdd_0p925>;
++	vdda-pll-supply = <&vdd_usb_phy>;
++	vdda-phy-dpdm-supply = <&vdd_3p3>;
++	status = "okay";
++};
++
++&usb3 {
++	pinctrl-0 = <&usb_supply_pin>;
++	pinctrl-names = "default";
++	status = "okay";
++};
++
++&ref_48mhz_clk {
++	clock-div = <1>;
++	clock-mult = <2>;
++};
++
++&xo_board_clk {
++	clock-div = <2>;
++	clock-mult = <1>;
++};
++
++&xo_clk {
++	clock-frequency = <24000000>;
++};
++
++&soc {
++	q6v5_wcss: remoteproc@cd00000 {
++		compatible = "qcom,ipq9574-wcss-pil";
++		reg = <0x0cd00000 0x4040>,
++		      <0x004ab000 0x20>;
++		reg-names = "qdsp6", "rmb";
++		qca,auto-restart;
++		qca,extended-intc;
++		interrupts-extended = <&intc GIC_SPI 325 IRQ_TYPE_EDGE_RISING>,
++				      <&wcss_smp2p_in 0 IRQ_TYPE_NONE>,
++				      <&wcss_smp2p_in 1 IRQ_TYPE_NONE>,
++				      <&wcss_smp2p_in 2 IRQ_TYPE_NONE>,
++				      <&wcss_smp2p_in 3 IRQ_TYPE_NONE>;
++		interrupt-names = "wdog",
++				  "fatal",
++				  "ready",
++				  "handover",
++				  "stop-ack";
++		resets = <&gcc GCC_WCSSAON_RESET>,
++			 <&gcc GCC_WCSS_BCR>,
++			 <&gcc GCC_WCSS_Q6_BCR>;
++		reset-names = "wcss_aon_reset",
++			      "wcss_reset",
++			      "wcss_q6_bcr_reset";
++		clocks = <&gcc GCC_ANOC_WCSS_AXI_M_CLK>,
++			 <&gcc GCC_Q6_AHB_CLK>,
++			 <&gcc GCC_Q6_AHB_S_CLK>,
++			 <&gcc GCC_Q6_AXIM_CLK>,
++			 <&gcc GCC_Q6SS_BOOT_CLK>,
++			 <&gcc GCC_MEM_NOC_Q6_AXI_CLK>,
++			 <&gcc GCC_SYS_NOC_WCSS_AHB_CLK>,
++			 <&gcc GCC_WCSS_ACMT_CLK>,
++			 <&gcc GCC_WCSS_ECAHB_CLK>,
++			 <&gcc GCC_WCSS_Q6_TBU_CLK>,
++			 <&gcc GCC_Q6_AXIM2_CLK>,
++			 <&gcc GCC_WCSS_AHB_S_CLK>,
++			 <&gcc GCC_WCSS_AXI_M_CLK>;
++		clock-names = "anoc_wcss_axi_m",
++			      "q6_ahb",
++			      "q6_ahb_s",
++			      "q6_axim",
++			      "q6ss_boot",
++			      "mem_noc_q6_axi",
++			      "sys_noc_wcss_ahb",
++			      "wcss_acmt",
++			      "wcss_ecahb",
++			      "wcss_q6_tbu",
++			      "q6_axim2",
++			      "wcss_ahb_s",
++			      "wcss_axi_m";
++		qcom,halt-regs = <&tcsr 0x18000 0x1b000 0xe000>;
++		qcom,smem-states = <&wcss_smp2p_out 0>, <&wcss_smp2p_out 1>;
++		qcom,smem-state-names = "shutdown", "stop";
++		memory-region = <&q6_region>;
++		status = "okay";
++
++		glink-edge {
++			interrupts = <GIC_SPI 321 IRQ_TYPE_EDGE_RISING>;
++			qcom,remote-pid = <1>;
++			mboxes = <&apcs_glb 8>;
++
++			qrtr_requests {
++				qcom,glink-channels = "IPCRTR";
++			};
++		};
++	};
++
++	wifi0: wifi@c000000 {
++		compatible = "qcom,ipq9574-wifi";
++		reg = <0x0c000000 0x2000000>;
++		qcom,rproc = <&q6v5_wcss>;
++		qcom,ath11k-fw-memory-mode = <2>;
++		nvmem-cells = <&base_mac 2>;
++		nvmem-cell-names = "mac-address";
++
++		clocks = <&xo_board_clk>;
++		clock-names = "xo";
++		interrupts = <GIC_SPI 320 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 319 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 318 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 316 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 315 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 314 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 311 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 310 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 411 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 410 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 40 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 39 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 302 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 301 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 37 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 36 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 296 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 295 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 294 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 293 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 292 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 291 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 290 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 289 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 288 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 239 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 236 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 235 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 234 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 233 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 232 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 231 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 230 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 229 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 228 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 224 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 223 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 203 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 183 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 180 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 179 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 178 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 177 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 176 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 163 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 162 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 160 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 414 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 159 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 158 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 157 IRQ_TYPE_EDGE_RISING>,
++			     <GIC_SPI 156 IRQ_TYPE_EDGE_RISING>;
++		interrupt-names = "misc-pulse1",
++				  "misc-latch",
++				  "sw-exception",
++				  "ce0",
++				  "ce1",
++				  "ce2",
++				  "ce3",
++				  "ce4",
++				  "ce5",
++				  "ce6",
++				  "ce7",
++				  "ce8",
++				  "ce9",
++				  "ce10",
++				  "ce11",
++				  "host2wbm-desc-feed",
++				  "host2reo-re-injection",
++				  "host2reo-command",
++				  "host2rxdma-monitor-ring3",
++				  "host2rxdma-monitor-ring2",
++				  "host2rxdma-monitor-ring1",
++				  "reo2ost-exception",
++				  "wbm2host-rx-release",
++				  "reo2host-status",
++				  "reo2host-destination-ring4",
++				  "reo2host-destination-ring3",
++				  "reo2host-destination-ring2",
++				  "reo2host-destination-ring1",
++				  "rxdma2host-monitor-destination-mac3",
++				  "rxdma2host-monitor-destination-mac2",
++				  "rxdma2host-monitor-destination-mac1",
++				  "ppdu-end-interrupts-mac3",
++				  "ppdu-end-interrupts-mac2",
++				  "ppdu-end-interrupts-mac1",
++				  "rxdma2host-monitor-status-ring-mac3",
++				  "rxdma2host-monitor-status-ring-mac2",
++				  "rxdma2host-monitor-status-ring-mac1",
++				  "host2rxdma-host-buf-ring-mac3",
++				  "host2rxdma-host-buf-ring-mac2",
++				  "host2rxdma-host-buf-ring-mac1",
++				  "rxdma2host-destination-ring-mac3",
++				  "rxdma2host-destination-ring-mac2",
++				  "rxdma2host-destination-ring-mac1",
++				  "host2tcl-input-ring4",
++				  "host2tcl-input-ring3",
++				  "host2tcl-input-ring2",
++				  "host2tcl-input-ring1",
++				  "wbm2host-tx-completions-ring4",
++				  "wbm2host-tx-completions-ring3",
++				  "wbm2host-tx-completions-ring2",
++				  "wbm2host-tx-completions-ring1",
++				  "tcl2host-status-ring";
++		status = "okay";
++	};
++};
+diff --git a/target/linux/qualcommbe/image/ipq95xx.mk b/target/linux/qualcommbe/image/ipq95xx.mk
+index ae404d92..faf468d3 100644
+--- a/target/linux/qualcommbe/image/ipq95xx.mk
++++ b/target/linux/qualcommbe/image/ipq95xx.mk
+@@ -58,3 +58,54 @@ define Device/qcom_rdp433
+ 	IMAGE/sysupgrade.bin := append-kernel | pad-to 64k | append-rootfs | pad-rootfs | check-size | append-metadata
+ endef
+ TARGET_DEVICES += qcom_rdp433
++
++define Device/jiorouter_ax6000-jidu6j11
++	$(call Device/FitImage)
++	$(call Device/UbiFit)
++	DEVICE_VENDOR := JioRouter
++	DEVICE_MODEL := AX6000
++	SOC := ipq9554
++	BLOCKSIZE := 128k
++	PAGESIZE := 2048
++	DEVICE_PACKAGES := kmod-ath11k-ahb kmod-ath11k kmod-ath11k-pci \
++		ath11k-firmware-ipq9574 ath11k-firmware-qcn9074 \
++		ipq-wifi-jiorouter_ax6000-jidu6j11 \
++		uboot-envtools kmod-leds-gpio kmod-gpio-button-hotplug \
++		kmod-qcom-ppe kmod-usb3 kmod-usb-dwc3 kmod-usb-dwc3-qcom \
++		kmod-ledtrig-netdev
++endef
++
++define Device/jiorouter_ax6000-jidu6j11-6111
++	$(call Device/jiorouter_ax6000-jidu6j11)
++	DEVICE_VARIANT := JIDU6J11-6111
++	DEVICE_DTS := ipq9554-jiorouter-ax6000-jidu6j11-6111
++endef
++TARGET_DEVICES += jiorouter_ax6000-jidu6j11-6111
++
++define Device/jiorouter_ax6000-jidu6j11-6411
++	$(call Device/jiorouter_ax6000-jidu6j11)
++	DEVICE_VARIANT := JIDU6J11-6411
++	DEVICE_DTS := ipq9554-jiorouter-ax6000-jidu6j11-6411
++endef
++TARGET_DEVICES += jiorouter_ax6000-jidu6j11-6411
++
++define Device/jiorouter_ax6000-jidu6j11-6611
++	$(call Device/jiorouter_ax6000-jidu6j11)
++	DEVICE_VARIANT := JIDU6J11-6611
++	DEVICE_DTS := ipq9554-jiorouter-ax6000-jidu6j11-6611
++endef
++TARGET_DEVICES += jiorouter_ax6000-jidu6j11-6611
++
++define Device/jiorouter_ax6000-jidu6j11-6811
++	$(call Device/jiorouter_ax6000-jidu6j11)
++	DEVICE_VARIANT := JIDU6J11-6811
++	DEVICE_DTS := ipq9554-jiorouter-ax6000-jidu6j11-6811
++endef
++TARGET_DEVICES += jiorouter_ax6000-jidu6j11-6811
++
++define Device/jiorouter_ax6000-jidu6j11-6911
++	$(call Device/jiorouter_ax6000-jidu6j11)
++	DEVICE_VARIANT := JIDU6J11-6911
++	DEVICE_DTS := ipq9554-jiorouter-ax6000-jidu6j11-6911
++endef
++TARGET_DEVICES += jiorouter_ax6000-jidu6j11-6911
+diff --git a/target/linux/qualcommbe/ipq95xx/base-files/etc/board.d/02_network b/target/linux/qualcommbe/ipq95xx/base-files/etc/board.d/02_network
+index 1ab91adc..fca8549f 100644
+--- a/target/linux/qualcommbe/ipq95xx/base-files/etc/board.d/02_network
++++ b/target/linux/qualcommbe/ipq95xx/base-files/etc/board.d/02_network
+@@ -23,6 +23,13 @@ ipq95xx_setup_interfaces()
+ 	qcom,ipq9574-ap-al02-c7)
+ 		ucidef_set_interfaces_lan_wan "lan1 lan2 lan3 lan4 lan5" "wan"
+ 		;;
++	jiorouter,ax6000-jidu6j11-6111|\
++	jiorouter,ax6000-jidu6j11-6411|\
++	jiorouter,ax6000-jidu6j11-6611|\
++	jiorouter,ax6000-jidu6j11-6811|\
++	jiorouter,ax6000-jidu6j11-6911)
++		ucidef_set_interfaces_lan_wan "lan1 lan2 lan3 lan4" "wan"
++		;;
+ 	*)
+ 		echo "Unsupported hardware. Network interfaces not initialized"
+ 		;;
+diff --git a/target/linux/qualcommbe/ipq95xx/base-files/etc/hotplug.d/firmware/11-ath11k-caldata b/target/linux/qualcommbe/ipq95xx/base-files/etc/hotplug.d/firmware/11-ath11k-caldata
+new file mode 100644
+index 00000000..dbc333f0
+--- /dev/null
++++ b/target/linux/qualcommbe/ipq95xx/base-files/etc/hotplug.d/firmware/11-ath11k-caldata
+@@ -0,0 +1,35 @@
++#!/bin/sh
++
++[ -e /lib/firmware/$FIRMWARE ] && exit 0
++
++. /lib/functions/caldata.sh
++
++board=$(board_name)
++
++case "$FIRMWARE" in
++"ath11k/IPQ9574/hw1.0/cal-ahb-c000000.wifi.bin")
++	case "$board" in
++	jiorouter,ax6000-jidu6j11-6111|\
++	jiorouter,ax6000-jidu6j11-6411|\
++	jiorouter,ax6000-jidu6j11-6611|\
++	jiorouter,ax6000-jidu6j11-6811|\
++	jiorouter,ax6000-jidu6j11-6911)
++		caldata_extract "0:ART" 0x1000 0x20000
++		;;
++	esac
++	;;
++"ath11k/QCN9074/hw1.0/cal-pci-0001:01:00.0.bin")
++	case "$board" in
++	jiorouter,ax6000-jidu6j11-6111|\
++	jiorouter,ax6000-jidu6j11-6411|\
++	jiorouter,ax6000-jidu6j11-6611|\
++	jiorouter,ax6000-jidu6j11-6811|\
++	jiorouter,ax6000-jidu6j11-6911)
++		caldata_extract "0:ART" 0x4c000 0x20000
++		;;
++	esac
++	;;
++*)
++	exit 1
++	;;
++esac
+diff --git a/target/linux/qualcommbe/ipq95xx/base-files/lib/upgrade/platform.sh b/target/linux/qualcommbe/ipq95xx/base-files/lib/upgrade/platform.sh
+index 5c1a014f..acdad711 100644
+--- a/target/linux/qualcommbe/ipq95xx/base-files/lib/upgrade/platform.sh
++++ b/target/linux/qualcommbe/ipq95xx/base-files/lib/upgrade/platform.sh
+@@ -4,23 +4,31 @@ REQUIRE_IMAGE_METADATA=1
+ RAMFS_COPY_BIN='fw_printenv fw_setenv head cmp sha256sum tr mktemp'
+ RAMFS_COPY_DATA='/etc/fw_env.config /var/lock/fw_printenv.lock'
+ 
+-platform_check_image() {
+-	case "$(board_name)" in
+-	linksys,ln6001)
+-		ln6001_preflight "$1" || {
+-			echo "LN6001 A/B preflight failed" >&2
+-			return 1
+-		}
+-		return 0
+-		;;
+-	*)
+-		return 0
+-		;;
+-	esac
++jiorouter_initial_setup() {
++	[ "$(rootfs_type)" = "tmpfs" ] || return 0
++
++	local mtdnum="$(find_mtd_index 0:APPSBLENV)"
++	if [ ! "$mtdnum" ]; then
++		echo "unable to find mtd partition 0:APPSBLENV"
++		return 1
++	fi
++
++	echo "/dev/mtd$mtdnum 0x0 0x40000 0x20000" > /etc/fw_env.config
++
++	# Set up U-Boot environment to boot OpenWrt
++	fw_setenv mtdids 'nand0=nand0' || return 1
++	fw_setenv mtdparts 'mtdparts=nand0:0xe100000@0x1700000(ubi)' || return 1
++	fw_setenv bootcmd 'ubi part ubi; ubi read 0x44000000 kernel; bootm 0x44000000' || return 1
++	fw_setenv bootargs 'console=ttyMSM0,115200n8 ubi.mtd=ubi root=/dev/ubiblock0_1 rootfstype=squashfs' || return 1
+ }
+ 
+ platform_do_upgrade() {
+ 	case "$(board_name)" in
++	jiorouter,ax6000-jidu6j11*)
++		jiorouter_initial_setup || return 1
++		CI_UBIPART="ubi"
++		nand_do_upgrade "$1"
++		;;
+ 	8devices,kiwi-dvk)
+ 		CI_KERNPART="0:HLOS"
+ 		CI_ROOTPART="rootfs"
+@@ -41,6 +49,27 @@ platform_do_upgrade() {
+ 	esac
+ }
+ 
++platform_check_image() {
++	local board=$(board_name)
++
++	case "$board" in
++	jiorouter,ax6000-jidu6j11*)
++		nand_do_platform_check "$board" "$1"
++		return $?
++		;;
++	linksys,ln6001)
++		ln6001_preflight "$1" || {
++			echo "LN6001 A/B preflight failed" >&2
++			return 1
++		}
++		return 0
++		;;
++	*)
++		return 0
++		;;
++	esac
++}
++
+ platform_copy_config() {
+ 	case "$(board_name)" in
+ 	8devices,kiwi-dvk|\
+diff --git a/target/linux/qualcommbe/patches-6.18/0702-dt-bindings-clk-qcom-ipq9574-add-wcss-q6-clocks.patch b/target/linux/qualcommbe/patches-6.18/0702-dt-bindings-clk-qcom-ipq9574-add-wcss-q6-clocks.patch
+new file mode 100644
+index 00000000..bcb31ee0
+--- /dev/null
++++ b/target/linux/qualcommbe/patches-6.18/0702-dt-bindings-clk-qcom-ipq9574-add-wcss-q6-clocks.patch
+@@ -0,0 +1,79 @@
++From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
++From: Igor Kravchenko <igor.kravchenko05@gmail.com>
++Date: Fri, 24 Jul 2026 12:00:00 +0000
++Subject: [PATCH] dt-bindings: clk: qcom: ipq9574: add WCSS Q6 clocks
++
++Add the IPQ9574 GCC clock IDs needed by the native WCSS remoteproc
++bring-up path. These clocks are used by qcom_q6v5_wcss when booting the
++integrated Wi-Fi firmware outside PAS mode.
++
++Signed-off-by: Alexandru Gagniuc <mr.nuke.me@gmail.com>
++Signed-off-by: Igor Kravchenko <igor.kravchenko05@gmail.com>
++---
++ include/dt-bindings/clock/qcom,ipq9574-gcc.h | 22 ++++++++++++++++++++
++ 1 file changed, 22 insertions(+)
++
++--- a/include/dt-bindings/clock/qcom,ipq9574-gcc.h
+++++ b/include/dt-bindings/clock/qcom,ipq9574-gcc.h
++@@ -132,8 +132,16 @@
++ #define GCC_NSSNOC_SNOC_1_CLK				123
++ #define GCC_QDSS_ETR_USB_CLK				124
++ #define WCSS_AHB_CLK_SRC				125
+++#define GCC_Q6_AHB_CLK					126
+++#define GCC_Q6_AHB_S_CLK				127
+++#define GCC_WCSS_ECAHB_CLK				128
+++#define GCC_WCSS_ACMT_CLK				129
+++#define GCC_SYS_NOC_WCSS_AHB_CLK			130
++ #define WCSS_AXI_M_CLK_SRC				131
+++#define GCC_ANOC_WCSS_AXI_M_CLK				132
++ #define QDSS_AT_CLK_SRC					133
+++#define GCC_Q6SS_ATBM_CLK				134
+++#define GCC_WCSS_DBG_IFC_ATB_CLK			135
++ #define GCC_NSSNOC_ATB_CLK				136
++ #define GCC_QDSS_AT_CLK					137
++ #define GCC_SYS_NOC_AT_CLK				138
++@@ -146,18 +154,27 @@
++ #define QDSS_TRACECLKIN_CLK_SRC				145
++ #define GCC_QDSS_TRACECLKIN_CLK				146
++ #define QDSS_TSCTR_CLK_SRC				147
+++#define GCC_Q6_TSCTR_1TO2_CLK				148
+++#define GCC_WCSS_DBG_IFC_NTS_CLK			149
++ #define GCC_QDSS_TSCTR_DIV2_CLK				150
++ #define GCC_QDSS_TS_CLK					151
++ #define GCC_QDSS_TSCTR_DIV4_CLK				152
++ #define GCC_NSS_TS_CLK					153
++ #define GCC_QDSS_TSCTR_DIV8_CLK				154
++ #define GCC_QDSS_TSCTR_DIV16_CLK			155
+++#define GCC_Q6SS_PCLKDBG_CLK				156
+++#define GCC_Q6SS_TRIG_CLK				157
+++#define GCC_WCSS_DBG_IFC_APB_CLK			158
+++#define GCC_WCSS_DBG_IFC_DAPBUS_CLK			159
++ #define GCC_QDSS_DAP_CLK				160
++ #define GCC_QDSS_APB2JTAG_CLK				161
++ #define GCC_QDSS_TSCTR_DIV3_CLK				162
++ #define QPIC_IO_MACRO_CLK_SRC				163
++ #define GCC_QPIC_IO_MACRO_CLK                           164
++ #define Q6_AXI_CLK_SRC					165
+++#define GCC_Q6_AXIM_CLK					166
+++#define GCC_WCSS_Q6_TBU_CLK				167
+++#define GCC_MEM_NOC_Q6_AXI_CLK				168
++ #define Q6_AXIM2_CLK_SRC				169
++ #define NSSNOC_MEMNOC_BFDCD_CLK_SRC			170
++ #define GCC_NSSNOC_MEMNOC_CLK				171
++@@ -182,6 +199,7 @@
++ #define GCC_UNIPHY2_SYS_CLK				190
++ #define GCC_CMN_12GPLL_SYS_CLK				191
++ #define GCC_NSSNOC_XO_DCD_CLK				192
+++#define GCC_Q6SS_BOOT_CLK				193
++ #define UNIPHY_SYS_CLK_SRC				194
++ #define NSS_TS_CLK_SRC					195
++ #define GCC_ANOC_PCIE0_1LANE_M_CLK			196
++@@ -203,4 +221,8 @@
++ #define GCC_PCIE2_PIPE_CLK				212
++ #define GCC_PCIE3_PIPE_CLK				213
++ #define GPLL0_OUT_AUX					214
+++#define GCC_WCSS_AHB_S_CLK				215
+++#define GCC_WCSS_AXI_M_CLK				216
+++#define GCC_Q6_AXIM2_CLK				217
+++
++ #endif
+diff --git a/target/linux/qualcommbe/patches-6.18/0703-clk-qcom-gcc-ipq9574-add-wcss-q6-clocks.patch b/target/linux/qualcommbe/patches-6.18/0703-clk-qcom-gcc-ipq9574-add-wcss-q6-clocks.patch
+new file mode 100644
+index 00000000..d166c4ca
+--- /dev/null
++++ b/target/linux/qualcommbe/patches-6.18/0703-clk-qcom-gcc-ipq9574-add-wcss-q6-clocks.patch
+@@ -0,0 +1,489 @@
++From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
++From: Igor Kravchenko <igor.kravchenko05@gmail.com>
++Date: Fri, 24 Jul 2026 12:00:00 +0000
++Subject: [PATCH] clk: qcom: gcc-ipq9574: add WCSS Q6 clocks
++
++Expose the IPQ9574 GCC branch clocks required to start the WCSS Q6
++remote processor. The native WCSS loader needs a pre-boot clock set and
++a smaller post-boot clock set before ath11k can obtain its remoteproc.
++
++Signed-off-by: Alexandru Gagniuc <mr.nuke.me@gmail.com>
++Signed-off-by: Igor Kravchenko <igor.kravchenko05@gmail.com>
++---
++ drivers/clk/qcom/gcc-ipq9574.c | 380 +++++++++++++++++++++++++++++++++
++ 1 file changed, 380 insertions(+)
++
++--- a/drivers/clk/qcom/gcc-ipq9574.c
+++++ b/drivers/clk/qcom/gcc-ipq9574.c
++@@ -2659,6 +2659,24 @@ static struct clk_rcg2 system_noc_bfdcd_
++ 	},
++ };
++ 
+++static struct clk_branch gcc_q6ss_boot_clk = {
+++	.halt_reg = 0x25080,
+++	.halt_check = BRANCH_HALT_SKIP,
+++	.clkr = {
+++		.enable_reg = 0x25080,
+++		.enable_mask = BIT(0),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_q6ss_boot_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&system_noc_bfdcd_clk_src.clkr.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
++ static struct clk_branch gcc_nssnoc_snoc_clk = {
++ 	.halt_reg = 0x17028,
++ 	.clkr = {
++@@ -2729,6 +2747,108 @@ static struct clk_rcg2 wcss_ahb_clk_src
++ 	},
++ };
++ 
+++static struct clk_branch gcc_q6_ahb_clk = {
+++	.halt_reg = 0x25014,
+++	.clkr = {
+++		.enable_reg = 0x25014,
+++		.enable_mask = BIT(0),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_q6_ahb_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&wcss_ahb_clk_src.clkr.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
+++static struct clk_branch gcc_q6_ahb_s_clk = {
+++	.halt_reg = 0x25018,
+++	.clkr = {
+++		.enable_reg = 0x25018,
+++		.enable_mask = BIT(0),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_q6_ahb_s_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&wcss_ahb_clk_src.clkr.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
+++static struct clk_branch gcc_wcss_ecahb_clk = {
+++	.halt_reg = 0x25058,
+++	.clkr = {
+++		.enable_reg = 0x25058,
+++		.enable_mask = BIT(0),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_wcss_ecahb_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&wcss_ahb_clk_src.clkr.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
+++static struct clk_branch gcc_wcss_acmt_clk = {
+++	.halt_reg = 0x2505c,
+++	.clkr = {
+++		.enable_reg = 0x2505c,
+++		.enable_mask = BIT(0),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_wcss_acmt_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&wcss_ahb_clk_src.clkr.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
+++static struct clk_branch gcc_wcss_ahb_s_clk = {
+++	.halt_reg = 0x25060,
+++	.clkr = {
+++		.enable_reg = 0x25060,
+++		.enable_mask = BIT(0),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_wcss_ahb_s_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&wcss_ahb_clk_src.clkr.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
+++static struct clk_branch gcc_sys_noc_wcss_ahb_clk = {
+++	.halt_reg = 0x2e030,
+++	.clkr = {
+++		.enable_reg = 0x2e030,
+++		.enable_mask = BIT(0),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_sys_noc_wcss_ahb_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&wcss_ahb_clk_src.clkr.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
++ static const struct freq_tbl ftbl_wcss_axi_m_clk_src[] = {
++ 	F(24000000, P_XO, 1, 0, 0),
++ 	F(133333333, P_GPLL0, 6, 0, 0),
++@@ -2749,6 +2869,40 @@ static struct clk_rcg2 wcss_axi_m_clk_sr
++ 	},
++ };
++ 
+++static struct clk_branch gcc_wcss_axi_m_clk = {
+++	.halt_reg = 0x25064,
+++	.clkr = {
+++		.enable_reg = 0x25064,
+++		.enable_mask = BIT(0),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_wcss_axi_m_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&wcss_axi_m_clk_src.clkr.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
+++static struct clk_branch gcc_anoc_wcss_axi_m_clk = {
+++	.halt_reg = 0x2e0a8,
+++	.clkr = {
+++		.enable_reg = 0x2e0a8,
+++		.enable_mask = BIT(0),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_anoc_wcss_axi_m_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&wcss_axi_m_clk_src.clkr.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
++ static const struct freq_tbl ftbl_qdss_at_clk_src[] = {
++ 	F(240000000, P_GPLL4, 5, 0, 0),
++ 	{ }
++@@ -2767,6 +2921,40 @@ static struct clk_rcg2 qdss_at_clk_src =
++ 	},
++ };
++ 
+++static struct clk_branch gcc_q6ss_atbm_clk = {
+++	.halt_reg = 0x2501c,
+++	.clkr = {
+++		.enable_reg = 0x2501c,
+++		.enable_mask = BIT(0),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_q6ss_atbm_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&qdss_at_clk_src.clkr.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
+++static struct clk_branch gcc_wcss_dbg_ifc_atb_clk = {
+++	.halt_reg = 0x2503c,
+++	.clkr = {
+++		.enable_reg = 0x2503c,
+++		.enable_mask = BIT(0),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_wcss_dbg_ifc_atb_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&qdss_at_clk_src.clkr.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
++ static struct clk_branch gcc_nssnoc_atb_clk = {
++ 	.halt_reg = 0x17014,
++ 	.clkr = {
++@@ -3003,6 +3191,40 @@ static struct clk_fixed_factor qdss_tsct
++ 	},
++ };
++ 
+++static struct clk_branch gcc_q6_tsctr_1to2_clk = {
+++	.halt_reg = 0x25020,
+++	.clkr = {
+++		.enable_reg = 0x25020,
+++		.enable_mask = BIT(0),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_q6_tsctr_1to2_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&qdss_tsctr_div2_clk_src.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
+++static struct clk_branch gcc_wcss_dbg_ifc_nts_clk = {
+++	.halt_reg = 0x25040,
+++	.clkr = {
+++		.enable_reg = 0x25040,
+++		.enable_mask = BIT(0),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_wcss_dbg_ifc_nts_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&qdss_tsctr_div2_clk_src.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
++ static struct clk_branch gcc_qdss_tsctr_div2_clk = {
++ 	.halt_reg = 0x2d044,
++ 	.clkr = {
++@@ -3177,6 +3399,74 @@ static struct clk_branch gcc_qdss_tsctr_
++ 	},
++ };
++ 
+++static struct clk_branch gcc_q6ss_pclkdbg_clk = {
+++	.halt_reg = 0x25024,
+++	.clkr = {
+++		.enable_reg = 0x25024,
+++		.enable_mask = BIT(0),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_q6ss_pclkdbg_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&qdss_dap_sync_clk_src.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
+++static struct clk_branch gcc_q6ss_trig_clk = {
+++	.halt_reg = 0x25068,
+++	.clkr = {
+++		.enable_reg = 0x25068,
+++		.enable_mask = BIT(0),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_q6ss_trig_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&qdss_dap_sync_clk_src.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
+++static struct clk_branch gcc_wcss_dbg_ifc_apb_clk = {
+++	.halt_reg = 0x25038,
+++	.clkr = {
+++		.enable_reg = 0x25038,
+++		.enable_mask = BIT(0),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_wcss_dbg_ifc_apb_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&qdss_dap_sync_clk_src.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
+++static struct clk_branch gcc_wcss_dbg_ifc_dapbus_clk = {
+++	.halt_reg = 0x25044,
+++	.clkr = {
+++		.enable_reg = 0x25044,
+++		.enable_mask = BIT(0),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_wcss_dbg_ifc_dapbus_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&qdss_dap_sync_clk_src.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
++ static struct clk_branch gcc_qdss_dap_clk = {
++ 	.halt_reg = 0x2d058,
++ 	.clkr = {
++@@ -3298,6 +3588,58 @@ static struct clk_rcg2 q6_axi_clk_src =
++ 	},
++ };
++ 
+++static struct clk_branch gcc_q6_axim_clk = {
+++	.halt_reg = 0x2500c,
+++	.clkr = {
+++		.enable_reg = 0x2500c,
+++		.enable_mask = BIT(0),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_q6_axim_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&q6_axi_clk_src.clkr.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
+++static struct clk_branch gcc_wcss_q6_tbu_clk = {
+++	.halt_reg = 0x12050,
+++	.halt_check = BRANCH_HALT_DELAY,
+++	.clkr = {
+++		.enable_reg = 0xb00c,
+++		.enable_mask = BIT(6),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_wcss_q6_tbu_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&q6_axi_clk_src.clkr.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
+++static struct clk_branch gcc_mem_noc_q6_axi_clk = {
+++	.halt_reg = 0x19010,
+++	.clkr = {
+++		.enable_reg = 0x19010,
+++		.enable_mask = BIT(0),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_mem_noc_q6_axi_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&q6_axi_clk_src.clkr.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
++ static const struct freq_tbl ftbl_q6_axim2_clk_src[] = {
++ 	F(342857143, P_GPLL4, 3.5, 0, 0),
++ 	{ }
++@@ -3323,6 +3665,23 @@ static struct clk_rcg2 q6_axim2_clk_src
++ 	},
++ };
++ 
+++static struct clk_branch gcc_q6_axim2_clk = {
+++	.halt_reg = 0x25010,
+++	.clkr = {
+++		.enable_reg = 0x25010,
+++		.enable_mask = BIT(0),
+++		.hw.init = &(const struct clk_init_data) {
+++			.name = "gcc_q6_axim2_clk",
+++			.parent_hws = (const struct clk_hw *[]) {
+++				&q6_axim2_clk_src.clkr.hw
+++			},
+++			.num_parents = 1,
+++			.flags = CLK_SET_RATE_PARENT,
+++			.ops = &clk_branch2_ops,
+++		},
+++	},
+++};
+++
++ static const struct freq_tbl ftbl_nssnoc_memnoc_bfdcd_clk_src[] = {
++ 	F(533333333, P_GPLL0, 1.5, 0, 0),
++ 	{ }
++@@ -3847,8 +4206,18 @@ static struct clk_regmap *gcc_ipq9574_cl
++ 	[GCC_NSSNOC_SNOC_1_CLK] = &gcc_nssnoc_snoc_1_clk.clkr,
++ 	[GCC_QDSS_ETR_USB_CLK] = &gcc_qdss_etr_usb_clk.clkr,
++ 	[WCSS_AHB_CLK_SRC] = &wcss_ahb_clk_src.clkr,
+++	[GCC_Q6_AHB_CLK] = &gcc_q6_ahb_clk.clkr,
+++	[GCC_Q6_AHB_S_CLK] = &gcc_q6_ahb_s_clk.clkr,
+++	[GCC_WCSS_ECAHB_CLK] = &gcc_wcss_ecahb_clk.clkr,
+++	[GCC_WCSS_ACMT_CLK] = &gcc_wcss_acmt_clk.clkr,
+++	[GCC_WCSS_AHB_S_CLK] = &gcc_wcss_ahb_s_clk.clkr,
+++	[GCC_SYS_NOC_WCSS_AHB_CLK] = &gcc_sys_noc_wcss_ahb_clk.clkr,
++ 	[WCSS_AXI_M_CLK_SRC] = &wcss_axi_m_clk_src.clkr,
+++	[GCC_WCSS_AXI_M_CLK] = &gcc_wcss_axi_m_clk.clkr,
+++	[GCC_ANOC_WCSS_AXI_M_CLK] = &gcc_anoc_wcss_axi_m_clk.clkr,
++ 	[QDSS_AT_CLK_SRC] = &qdss_at_clk_src.clkr,
+++	[GCC_Q6SS_ATBM_CLK] = &gcc_q6ss_atbm_clk.clkr,
+++	[GCC_WCSS_DBG_IFC_ATB_CLK] = &gcc_wcss_dbg_ifc_atb_clk.clkr,
++ 	[GCC_NSSNOC_ATB_CLK] = &gcc_nssnoc_atb_clk.clkr,
++ 	[GCC_QDSS_AT_CLK] = &gcc_qdss_at_clk.clkr,
++ 	[GCC_SYS_NOC_AT_CLK] = &gcc_sys_noc_at_clk.clkr,
++@@ -3861,19 +4230,29 @@ static struct clk_regmap *gcc_ipq9574_cl
++ 	[QDSS_TRACECLKIN_CLK_SRC] = &qdss_traceclkin_clk_src.clkr,
++ 	[GCC_QDSS_TRACECLKIN_CLK] = &gcc_qdss_traceclkin_clk.clkr,
++ 	[QDSS_TSCTR_CLK_SRC] = &qdss_tsctr_clk_src.clkr,
+++	[GCC_Q6_TSCTR_1TO2_CLK] = &gcc_q6_tsctr_1to2_clk.clkr,
+++	[GCC_WCSS_DBG_IFC_NTS_CLK] = &gcc_wcss_dbg_ifc_nts_clk.clkr,
++ 	[GCC_QDSS_TSCTR_DIV2_CLK] = &gcc_qdss_tsctr_div2_clk.clkr,
++ 	[GCC_QDSS_TS_CLK] = &gcc_qdss_ts_clk.clkr,
++ 	[GCC_QDSS_TSCTR_DIV4_CLK] = &gcc_qdss_tsctr_div4_clk.clkr,
++ 	[GCC_NSS_TS_CLK] = &gcc_nss_ts_clk.clkr,
++ 	[GCC_QDSS_TSCTR_DIV8_CLK] = &gcc_qdss_tsctr_div8_clk.clkr,
++ 	[GCC_QDSS_TSCTR_DIV16_CLK] = &gcc_qdss_tsctr_div16_clk.clkr,
+++	[GCC_Q6SS_PCLKDBG_CLK] = &gcc_q6ss_pclkdbg_clk.clkr,
+++	[GCC_Q6SS_TRIG_CLK] = &gcc_q6ss_trig_clk.clkr,
+++	[GCC_WCSS_DBG_IFC_APB_CLK] = &gcc_wcss_dbg_ifc_apb_clk.clkr,
+++	[GCC_WCSS_DBG_IFC_DAPBUS_CLK] = &gcc_wcss_dbg_ifc_dapbus_clk.clkr,
++ 	[GCC_QDSS_DAP_CLK] = &gcc_qdss_dap_clk.clkr,
++ 	[GCC_QDSS_APB2JTAG_CLK] = &gcc_qdss_apb2jtag_clk.clkr,
++ 	[GCC_QDSS_TSCTR_DIV3_CLK] = &gcc_qdss_tsctr_div3_clk.clkr,
++ 	[QPIC_IO_MACRO_CLK_SRC] = &qpic_io_macro_clk_src.clkr,
++ 	[GCC_QPIC_IO_MACRO_CLK] = &gcc_qpic_io_macro_clk.clkr,
++ 	[Q6_AXI_CLK_SRC] = &q6_axi_clk_src.clkr,
+++	[GCC_Q6_AXIM_CLK] = &gcc_q6_axim_clk.clkr,
+++	[GCC_WCSS_Q6_TBU_CLK] = &gcc_wcss_q6_tbu_clk.clkr,
+++	[GCC_MEM_NOC_Q6_AXI_CLK] = &gcc_mem_noc_q6_axi_clk.clkr,
++ 	[Q6_AXIM2_CLK_SRC] = &q6_axim2_clk_src.clkr,
+++	[GCC_Q6_AXIM2_CLK] = &gcc_q6_axim2_clk.clkr,
++ 	[NSSNOC_MEMNOC_BFDCD_CLK_SRC] = &nssnoc_memnoc_bfdcd_clk_src.clkr,
++ 	[GCC_NSSNOC_MEMNOC_CLK] = &gcc_nssnoc_memnoc_clk.clkr,
++ 	[GCC_NSSNOC_MEM_NOC_1_CLK] = &gcc_nssnoc_mem_noc_1_clk.clkr,
++@@ -3896,6 +4275,7 @@ static struct clk_regmap *gcc_ipq9574_cl
++ 	[GCC_UNIPHY1_SYS_CLK] = &gcc_uniphy1_sys_clk.clkr,
++ 	[GCC_UNIPHY2_SYS_CLK] = &gcc_uniphy2_sys_clk.clkr,
++ 	[GCC_CMN_12GPLL_SYS_CLK] = &gcc_cmn_12gpll_sys_clk.clkr,
+++	[GCC_Q6SS_BOOT_CLK] = &gcc_q6ss_boot_clk.clkr,
++ 	[UNIPHY_SYS_CLK_SRC] = &uniphy_sys_clk_src.clkr,
++ 	[NSS_TS_CLK_SRC] = &nss_ts_clk_src.clkr,
++ 	[GCC_ANOC_PCIE0_1LANE_M_CLK] = &gcc_anoc_pcie0_1lane_m_clk.clkr,
+diff --git a/target/linux/qualcommbe/patches-6.18/0704-remoteproc-qcom-q6v5-wcss-add-ipq9574-support.patch b/target/linux/qualcommbe/patches-6.18/0704-remoteproc-qcom-q6v5-wcss-add-ipq9574-support.patch
+new file mode 100644
+index 00000000..c89867c2
+--- /dev/null
++++ b/target/linux/qualcommbe/patches-6.18/0704-remoteproc-qcom-q6v5-wcss-add-ipq9574-support.patch
+@@ -0,0 +1,541 @@
++From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
++From: Igor Kravchenko <igor.kravchenko05@gmail.com>
++Date: Fri, 24 Jul 2026 12:00:00 +0000
++Subject: [PATCH] remoteproc: qcom_q6v5_wcss: add IPQ9574 support
++
++Add the IPQ9574 WCSS data and reset/start/stop sequence used by the
++native Q6 firmware loader. This lets the IPQ9574 q6v5_wcss node bind as a
++remoteproc provider for the integrated ath11k AHB device.
++
++Also load the optional M3 firmware image used by IPQ9574 firmware
++packages and point the IPQ9574 firmware names at OpenWrt's ath11k
++firmware installation path.
++
++Signed-off-by: Alexandru Gagniuc <mr.nuke.me@gmail.com>
++Signed-off-by: Igor Kravchenko <igor.kravchenko05@gmail.com>
++---
++--- a/drivers/remoteproc/qcom_q6v5_wcss.c
+++++ b/drivers/remoteproc/qcom_q6v5_wcss.c
++@@ -31,6 +31,9 @@
++ #define Q6SS_MEM_PWR_CTL		0x0B0
++ #define Q6SS_STRAP_ACC			0x110
++ #define Q6SS_CGC_OVERRIDE		0x034
+++#define Q6SS_BOOT_CORE_START		0x400
+++#define Q6SS_BOOT_CMD                   0x404
+++#define Q6SS_BOOT_STATUS		0x408
++ #define Q6SS_BCR_REG			0x6000
++ 
++ /* AXI Halt Register Offsets */
++@@ -48,7 +51,11 @@
++ /* Q6SS_BRC_RESET */
++ #define Q6SS_BRC_BLK_ARES		BIT(0)
++ 
+++/* QDSP6SS CBCR */
+++#define Q6SS_CBCR_CLKEN			BIT(0)
+++
++ /* Q6SS_GFMUX_CTL */
+++#define Q6SS_CLK_SRC_MUX		BIT(0)
++ #define Q6SS_CLK_ENABLE			BIT(1)
++ #define Q6SS_SWITCH_CLK_SRC		BIT(8)
++ 
++@@ -67,6 +74,7 @@
++ #define HALT_CHECK_MAX_LOOPS		200
++ #define Q6SS_XO_CBCR		GENMASK(5, 3)
++ #define Q6SS_SLEEP_CBCR		GENMASK(5, 2)
+++#define Q6SS_CORE_CBCR		BIT(5)
++ 
++ /* Q6SS config/status registers */
++ #define TCSR_GLOBAL_CFG0	0x0
++@@ -77,9 +85,11 @@
++ #define Q6SS_RST_EVB		0x10
++ 
++ #define BHS_EN_REST_ACK		BIT(0)
+++#define WCSS_HM_RET		BIT(1)
++ #define SSCAON_ENABLE		BIT(13)
++ #define SSCAON_BUS_EN		BIT(15)
++ #define SSCAON_BUS_MUX_MASK	GENMASK(18, 16)
+++#define SSCAON_MASK             GENMASK(17, 15)
++ 
++ #define MEM_BANKS		19
++ #define TCSR_WCSS_CLK_MASK	0x1F
++@@ -88,11 +98,13 @@
++ #define MAX_HALT_REG		4
++ enum {
++ 	WCSS_IPQ8074,
+++	WCSS_IPQ9574,
++ 	WCSS_QCS404,
++ };
++ 
++ struct wcss_data {
++-	const char *firmware_name;
+++	const char *q6_firmware_name;
+++	const char *m3_firmware_name;
++ 	unsigned int crash_reason_smem;
++ 	u32 version;
++ 	bool aon_reset_required;
++@@ -102,6 +114,7 @@ struct wcss_data {
++ 	int ssctl_id;
++ 	const struct rproc_ops *ops;
++ 	bool requires_force_stop;
+++	bool auto_boot;
++ };
++ 
++ struct q6v5_wcss {
++@@ -128,6 +141,12 @@ struct q6v5_wcss {
++ 	struct clk *qdsp6ss_xo_cbcr;
++ 	struct clk *qdsp6ss_core_gfmux;
++ 	struct clk *lcc_bcr_sleep;
+++	struct clk_bulk_data *clks;
+++	/* clocks that must be started before the Q6 is booted */
+++	struct clk_bulk_data *pre_boot_clks;
+++	int num_clks;
+++	int num_pre_boot_clks;
+++
++ 	struct regulator *cx_supply;
++ 	struct qcom_sysmon *sysmon;
++ 
++@@ -146,6 +165,7 @@ struct q6v5_wcss {
++ 	unsigned int crash_reason_smem;
++ 	u32 version;
++ 	bool requires_force_stop;
+++	const char *m3_firmware_name;
++ 
++ 	struct qcom_rproc_glink glink_subdev;
++ 	struct qcom_rproc_pdm pdm_subdev;
++@@ -236,6 +256,103 @@ static int q6v5_wcss_reset(struct q6v5_w
++ 	return 0;
++ }
++ 
+++static int q6v7_wcss_reset(struct q6v5_wcss *wcss, struct rproc *rproc)
+++{
+++	int ret;
+++	u32 val;
+++
+++	ret = regmap_update_bits(wcss->halt_map,
+++				 wcss->halt_nc + TCSR_GLOBAL_CFG1,
+++				 0xff00, 0x1100);
+++	if (ret) {
+++		dev_err(wcss->dev, "TCSR_GLOBAL_CFG1 failed\n");
+++		return ret;
+++	}
+++
+++	ret = clk_bulk_prepare_enable(wcss->num_pre_boot_clks,
+++				      wcss->pre_boot_clks);
+++	if (ret) {
+++		dev_err(wcss->dev, "failed to enable clocks, err=%d\n", ret);
+++		return ret;
+++	};
+++
+++	/* Write bootaddr to Q6WCSS */
+++	writel(rproc->bootaddr >> 4, wcss->reg_base + Q6SS_RST_EVB);
+++
+++	/* Deassert AON Reset */
+++	ret = reset_control_deassert(wcss->wcss_aon_reset);
+++	if (ret) {
+++		dev_err(wcss->dev, "wcss_aon_reset failed\n");
+++		goto disable_pre_boot_clocks;
+++	}
+++
+++	/* Set MPM configs*/
+++	/*set CFG[18:15]=1*/
+++	val = readl(wcss->rmb_base + SSCAON_CONFIG);
+++	val &= ~SSCAON_MASK;
+++	val |= SSCAON_BUS_EN;
+++	writel(val, wcss->rmb_base + SSCAON_CONFIG);
+++
+++	/* Wait for SSCAON_STATUS, up to 1 second */
+++	ret = readl_poll_timeout(wcss->rmb_base + SSCAON_STATUS,
+++				 val, (val & 0xffff) == 0x10, 1000, 1000000);
+++	if (ret) {
+++		dev_err(wcss->dev, " Boot Error, SSCAON=0x%08X\n", val);
+++		goto assert_aon_reset;
+++	}
+++
+++	/* BHS require xo cbcr to be enabled */
+++	val = readl(wcss->reg_base + Q6SS_XO_CBCR);
+++	val |= Q6SS_CBCR_CLKEN;
+++	writel(val, wcss->reg_base + Q6SS_XO_CBCR);
+++
+++	/* Enable core cbcr */
+++	val = readl(wcss->reg_base + Q6SS_CORE_CBCR);
+++	val |= Q6SS_CBCR_CLKEN;
+++	writel(val, wcss->reg_base + Q6SS_CORE_CBCR);
+++
+++	/* Enable sleep cbcr */
+++	val = readl(wcss->reg_base + Q6SS_SLEEP_CBCR);
+++	val |= Q6SS_CBCR_CLKEN;
+++	writel(val, wcss->reg_base + Q6SS_SLEEP_CBCR);
+++
+++	/* Boot core start */
+++	writel(0x1, wcss->reg_base + Q6SS_BOOT_CORE_START);
+++	writel(0x1, wcss->reg_base + Q6SS_BOOT_CMD);
+++
+++	/* Pray god and wait for reset to complete */
+++	ret = readl_poll_timeout(wcss->reg_base + Q6SS_BOOT_STATUS, val,
+++				 (val & BIT(0)), 1000, 20000);
+++	if (ret) {
+++		dev_err(wcss->dev, "WCSS boot timed out\n");
+++		ret = -ETIMEDOUT;
+++		goto assert_aon_reset;
+++	}
+++
+++	/* Enable post-boot clocks */
+++	ret = clk_bulk_prepare_enable(wcss->num_clks, wcss->clks);
+++	if (ret) {
+++		dev_err(wcss->dev, "failed to enable clocks, err=%d\n", ret);
+++		goto assert_aon_reset;
+++	};
+++
+++	return 0;
+++
+++assert_aon_reset:
+++	reset_control_assert(wcss->wcss_aon_reset);
+++disable_pre_boot_clocks:
+++	clk_bulk_disable_unprepare(wcss->num_pre_boot_clks,
+++				   wcss->pre_boot_clks);
+++	return ret;
+++}
+++
+++static void q6v7_wcss_disable_clocks(struct q6v5_wcss *wcss)
+++{
+++	clk_bulk_disable_unprepare(wcss->num_clks, wcss->clks);
+++	clk_bulk_disable_unprepare(wcss->num_pre_boot_clks,
+++				   wcss->pre_boot_clks);
+++}
+++
++ static int q6v5_wcss_start(struct rproc *rproc)
++ {
++ 	struct q6v5_wcss *wcss = rproc->priv;
++@@ -270,21 +387,37 @@ static int q6v5_wcss_start(struct rproc
++ 	if (ret)
++ 		goto wcss_q6_reset;
++ 
++-	/* Write bootaddr to EVB so that Q6WCSS will jump there after reset */
++-	writel(rproc->bootaddr >> 4, wcss->reg_base + Q6SS_RST_EVB);
+++	switch (wcss->version) {
+++	case WCSS_QCS404:
+++	case WCSS_IPQ8074:
+++		/* Write bootaddr to Q6WCSS */
+++		writel(rproc->bootaddr >> 4, wcss->reg_base + Q6SS_RST_EVB);
+++		ret = q6v5_wcss_reset(wcss);
+++		break;
+++	case WCSS_IPQ9574:
+++		ret = q6v7_wcss_reset(wcss, rproc);
+++		break;
+++	}
++ 
++-	ret = q6v5_wcss_reset(wcss);
++ 	if (ret)
++ 		goto wcss_q6_reset;
++ 
++ 	ret = qcom_q6v5_wait_for_start(&wcss->q6v5, 5 * HZ);
++ 	if (ret == -ETIMEDOUT)
++ 		dev_err(wcss->dev, "start timed out\n");
+++	if (ret) {
+++		if (wcss->version == WCSS_IPQ9574) {
+++			reset_control_assert(wcss->wcss_aon_reset);
+++			q6v7_wcss_disable_clocks(wcss);
+++		}
+++		goto wcss_q6_reset;
+++	}
++ 
++-	return ret;
+++	return 0;
++ 
++ wcss_q6_reset:
++ 	reset_control_assert(wcss->wcss_q6_reset);
+++	usleep_range(1000, 2000);
++ 
++ wcss_reset:
++ 	reset_control_assert(wcss->wcss_reset);
++@@ -638,6 +771,41 @@ static int q6v5_wcss_powerdown(struct q6
++ 	return 0;
++ }
++ 
+++static int q6v7_wcss_powerdown(struct q6v5_wcss *wcss)
+++{
+++	u32 val;
+++	int ret;
+++
+++	q6v5_wcss_halt_axi_port(wcss, wcss->halt_map, wcss->halt_wcss);
+++
+++	val = readl(wcss->rmb_base + SSCAON_CONFIG);
+++	val &= ~SSCAON_MASK;
+++	val |= SSCAON_BUS_EN;
+++	writel(val, wcss->rmb_base + SSCAON_CONFIG);
+++
+++	val |= WCSS_HM_RET;
+++	writel(val, wcss->rmb_base + SSCAON_CONFIG);
+++
+++	ret = readl_poll_timeout(wcss->rmb_base + SSCAON_STATUS,
+++				 val, (val & 0xffff) == 0x400, 1000,
+++				 HALT_CHECK_MAX_LOOPS);
+++	if (ret) {
+++		dev_err(wcss->dev,
+++			"can't get SSCAON_STATUS rc:%d)\n", ret);
+++		return ret;
+++	}
+++
+++	usleep_range(2000, 4000);
+++
+++	reset_control_assert(wcss->wcss_aon_reset);
+++
+++	val = readl(wcss->rmb_base + SSCAON_CONFIG);
+++	val &= ~WCSS_HM_RET;
+++	writel(val, wcss->rmb_base + SSCAON_CONFIG);
+++
+++	return 0;
+++}
+++
++ static int q6v5_q6_powerdown(struct q6v5_wcss *wcss)
++ {
++ 	int ret;
++@@ -705,6 +873,24 @@ static int q6v5_q6_powerdown(struct q6v5
++ 	return 0;
++ }
++ 
+++static void q6v7_q6_powerdown(struct q6v5_wcss *wcss)
+++{
+++	u32 val;
+++
+++	q6v5_wcss_halt_axi_port(wcss, wcss->halt_map, wcss->halt_q6);
+++
+++	/* Disable Q6 Core clock */
+++	val = readl(wcss->reg_base + Q6SS_GFMUX_CTL_REG);
+++	val &= ~Q6SS_CLK_SRC_MUX;
+++	writel(val, wcss->reg_base + Q6SS_GFMUX_CTL_REG);
+++
+++	q6v7_wcss_disable_clocks(wcss);
+++
+++	reset_control_assert(wcss->wcss_q6_reset);
+++	usleep_range(1000, 2000);
+++	reset_control_assert(wcss->wcss_reset);
+++}
+++
++ static int q6v5_wcss_stop(struct rproc *rproc)
++ {
++ 	struct q6v5_wcss *wcss = rproc->priv;
++@@ -719,11 +905,21 @@ static int q6v5_wcss_stop(struct rproc *
++ 		}
++ 	}
++ 
++-	if (wcss->version == WCSS_QCS404) {
+++	switch (wcss->version) {
+++	case WCSS_QCS404:
++ 		ret = q6v5_qcs404_wcss_shutdown(wcss);
++ 		if (ret)
++ 			return ret;
++-	} else {
+++		break;
+++	case WCSS_IPQ9574:
+++		ret = q6v7_wcss_powerdown(wcss);
+++		if (ret)
+++			return ret;
+++
+++		q6v7_q6_powerdown(wcss);
+++
+++		break;
+++	default:
++ 		ret = q6v5_wcss_powerdown(wcss);
++ 		if (ret)
++ 			return ret;
++@@ -732,6 +928,7 @@ static int q6v5_wcss_stop(struct rproc *
++ 		ret = q6v5_q6_powerdown(wcss);
++ 		if (ret)
++ 			return ret;
+++		break;
++ 	}
++ 
++ 	qcom_q6v5_unprepare(&wcss->q6v5);
++@@ -751,11 +948,41 @@ static void *q6v5_wcss_da_to_va(struct r
++ 	return wcss->mem_region + offset;
++ }
++ 
+++static int q6v5_wcss_load_aux(struct q6v5_wcss *wcss, const char *fw_name)
+++{
+++	const struct firmware *extra_fw;
+++	int ret;
+++
+++	dev_info(wcss->dev, "loading additional firmware image %s\n", fw_name);
+++
+++	ret = request_firmware(&extra_fw, fw_name, wcss->dev);
+++	if (ret)
+++		return ret;
+++
+++	ret = qcom_mdt_load_no_init(wcss->dev, extra_fw, fw_name,
+++				    wcss->mem_region, wcss->mem_phys,
+++				    wcss->mem_size, &wcss->mem_reloc);
+++
+++	release_firmware(extra_fw);
+++
+++	if (ret)
+++		dev_err(wcss->dev, "can't load %s\n", fw_name);
+++
+++	return ret;
+++}
+++
++ static int q6v5_wcss_load(struct rproc *rproc, const struct firmware *fw)
++ {
++ 	struct q6v5_wcss *wcss = rproc->priv;
++ 	int ret;
++ 
+++	if (wcss->m3_firmware_name) {
+++		ret = q6v5_wcss_load_aux(wcss, wcss->m3_firmware_name);
+++		/* Continue if M3 firmware does not exist */
+++		if (ret && (ret != -ENOENT))
+++			return ret;
+++	}
+++
++ 	ret = qcom_mdt_load_no_init(wcss->dev, fw, rproc->firmware,
++ 				    wcss->mem_region, wcss->mem_phys,
++ 				    wcss->mem_size, &wcss->mem_reloc);
++@@ -837,7 +1064,9 @@ static int q6v5_wcss_init_mmio(struct q6
++ 	if (!wcss->reg_base)
++ 		return -ENOMEM;
++ 
++-	if (wcss->version == WCSS_IPQ8074) {
+++	switch (wcss->version) {
+++	case WCSS_IPQ8074:
+++	case WCSS_IPQ9574:
++ 		wcss->rmb_base = devm_platform_ioremap_resource_byname(pdev, "rmb");
++ 		if (IS_ERR(wcss->rmb_base))
++ 			return PTR_ERR(wcss->rmb_base);
++@@ -969,6 +1198,44 @@ static int q6v5_wcss_init_regulator(stru
++ 	return 0;
++ }
++ 
+++static int ipq9574_init_clocks(struct q6v5_wcss *wcss)
+++{
+++	static const char *const pre_boot_clks[] = {
+++		"anoc_wcss_axi_m", "q6_ahb", "q6_ahb_s", "q6_axim", "q6ss_boot",
+++		"mem_noc_q6_axi", "sys_noc_wcss_ahb", "wcss_acmt", "wcss_ecahb",
+++		"wcss_q6_tbu" };
+++	static const char *const clks[] = {
+++		"q6_axim2", "wcss_ahb_s", "wcss_axi_m" };
+++	int i, ret;
+++
+++	wcss->num_clks = ARRAY_SIZE(clks);
+++	wcss->num_pre_boot_clks = ARRAY_SIZE(pre_boot_clks);
+++
+++	wcss->pre_boot_clks = devm_kcalloc(wcss->dev, wcss->num_pre_boot_clks,
+++					   sizeof(*wcss->pre_boot_clks),
+++					   GFP_KERNEL);
+++	if (!wcss->pre_boot_clks)
+++		return -ENOMEM;
+++
+++	wcss->clks = devm_kcalloc(wcss->dev, wcss->num_clks,
+++				  sizeof(*wcss->clks), GFP_KERNEL);
+++	if (!wcss->clks)
+++		return -ENOMEM;
+++
+++	for (i = 0; i < wcss->num_pre_boot_clks; i++)
+++		wcss->pre_boot_clks[i].id = pre_boot_clks[i];
+++
+++	for (i = 0; i < wcss->num_clks; i++)
+++		wcss->clks[i].id = clks[i];
+++
+++	ret = devm_clk_bulk_get(wcss->dev, wcss->num_pre_boot_clks,
+++				wcss->pre_boot_clks);
+++	if (ret < 0)
+++		return ret;
+++
+++	return devm_clk_bulk_get(wcss->dev, wcss->num_clks, wcss->clks);
+++}
+++
++ static int q6v5_wcss_probe(struct platform_device *pdev)
++ {
++ 	const struct wcss_data *desc;
++@@ -981,7 +1248,7 @@ static int q6v5_wcss_probe(struct platfo
++ 		return -EINVAL;
++ 
++ 	rproc = devm_rproc_alloc(&pdev->dev, pdev->name, desc->ops,
++-				 desc->firmware_name, sizeof(*wcss));
+++				 desc->q6_firmware_name, sizeof(*wcss));
++ 	if (!rproc) {
++ 		dev_err(&pdev->dev, "failed to allocate rproc\n");
++ 		return -ENOMEM;
++@@ -992,6 +1259,7 @@ static int q6v5_wcss_probe(struct platfo
++ 
++ 	wcss->version = desc->version;
++ 	wcss->requires_force_stop = desc->requires_force_stop;
+++	wcss->m3_firmware_name = desc->m3_firmware_name;
++ 
++ 	ret = q6v5_wcss_init_mmio(wcss, pdev);
++ 	if (ret)
++@@ -1001,7 +1269,8 @@ static int q6v5_wcss_probe(struct platfo
++ 	if (ret)
++ 		return ret;
++ 
++-	if (wcss->version == WCSS_QCS404) {
+++	switch (wcss->version) {
+++	case WCSS_QCS404:
++ 		ret = q6v5_wcss_init_clock(wcss);
++ 		if (ret)
++ 			return ret;
++@@ -1009,6 +1278,11 @@ static int q6v5_wcss_probe(struct platfo
++ 		ret = q6v5_wcss_init_regulator(wcss);
++ 		if (ret)
++ 			return ret;
+++		break;
+++	case WCSS_IPQ9574:
+++		ret = ipq9574_init_clocks(wcss);
+++		if (ret)
+++			return ret;
++ 	}
++ 
++ 	ret = q6v5_wcss_init_reset(wcss, desc);
++@@ -1033,6 +1307,7 @@ static int q6v5_wcss_probe(struct platfo
++ 		}
++ 	}
++ 
+++	rproc->auto_boot = desc->auto_boot;
++ 	ret = rproc_add(rproc);
++ 	if (ret)
++ 		goto remove_sysmon_subdev;
++@@ -1063,17 +1338,31 @@ static void q6v5_wcss_remove(struct plat
++ }
++ 
++ static const struct wcss_data wcss_ipq8074_res_init = {
++-	.firmware_name = "IPQ8074/q6_fw.mdt",
+++	.q6_firmware_name = "IPQ8074/q6_fw.mdt",
+++	.m3_firmware_name = "IPQ8074/m3_fw.mdt",
++ 	.crash_reason_smem = WCSS_CRASH_REASON,
++ 	.aon_reset_required = true,
++ 	.wcss_q6_reset_required = true,
++ 	.ops = &q6v5_wcss_ipq8074_ops,
++ 	.requires_force_stop = true,
+++	.auto_boot = true,
+++};
+++
+++static const struct wcss_data wcss_ipq9574_res_init = {
+++	.q6_firmware_name = "ath11k/IPQ9574/hw1.0/q6_fw.mdt",
+++	.m3_firmware_name = "ath11k/IPQ9574/hw1.0/m3_fw.mdt",
+++	.version = WCSS_IPQ9574,
+++	.crash_reason_smem = WCSS_CRASH_REASON,
+++	.aon_reset_required = true,
+++	.ssr_name = "q6wcss",
+++	.ops = &q6v5_wcss_ipq8074_ops,
+++	.requires_force_stop = true,
+++	.auto_boot = false,
++ };
++ 
++ static const struct wcss_data wcss_qcs404_res_init = {
++ 	.crash_reason_smem = WCSS_CRASH_REASON,
++-	.firmware_name = "wcnss.mdt",
+++	.q6_firmware_name = "wcnss.mdt",
++ 	.version = WCSS_QCS404,
++ 	.aon_reset_required = false,
++ 	.wcss_q6_reset_required = false,
++@@ -1082,10 +1371,12 @@ static const struct wcss_data wcss_qcs40
++ 	.ssctl_id = 0x12,
++ 	.ops = &q6v5_wcss_qcs404_ops,
++ 	.requires_force_stop = false,
+++	.auto_boot = true,
++ };
++ 
++ static const struct of_device_id q6v5_wcss_of_match[] = {
++ 	{ .compatible = "qcom,ipq8074-wcss-pil", .data = &wcss_ipq8074_res_init },
+++	{ .compatible = "qcom,ipq9574-wcss-pil", .data = &wcss_ipq9574_res_init },
++ 	{ .compatible = "qcom,qcs404-wcss-pil", .data = &wcss_qcs404_res_init },
++ 	{ },
++ };
+-- 
+2.43.0
+

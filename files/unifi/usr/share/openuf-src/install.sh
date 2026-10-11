@@ -1,0 +1,542 @@
+#!/bin/sh
+# openUF install/uninstall script
+#
+# Installs the Lua emulator onto a writable OpenWrt device.
+# Run from the project root after transferring files to the device.
+#
+# Usage:
+#   ./install.sh install [--bootstrap-adopt] [--replace-conf]
+#                           — copy files, enable service. An existing
+#                             /opt/openuf/conf.lua is KEPT unless --replace-conf
+#   ./install.sh uninstall  — remove files, disable service
+
+INSTALL_DIR=/opt/openuf
+STATE_DIR=/etc/openuf
+BIN_LINK=/usr/bin/syswrapper.sh
+INIT_SCRIPT=/etc/init.d/openuf
+
+# ── Package manager ─────────────────────────────────────────────────────────
+# OpenWrt 25.12 replaced opkg with apk. Both are supported: every package
+# openUF needs is named identically in either feed, only the CLI differs.
+# Hardcoding `apk` made every dependency check fail on a 24.10 device -- not
+# loudly, but by reporting the whole list as missing and then failing to
+# install it, which reads as "openUF needs nothing" right up until the daemon
+# dies on a missing lua-cjson.
+#
+# Neither present (a stripped image, or a `sh install.sh` on something that is
+# not OpenWrt at all) degrades to "nothing is installed and nothing can be":
+# openUF's own files still land, and the warnings say exactly what to add by
+# hand. pkg_add deliberately does NOT redirect output -- callers decide, and
+# the REQUIRED install below wants apk's own error text on screen.
+if command -v apk >/dev/null 2>&1; then
+	PKG_CMD="apk add"
+	pkg_installed() { apk info -e "$1" >/dev/null 2>&1; }
+	pkg_add()       { apk add "$@"; }
+elif command -v opkg >/dev/null 2>&1; then
+	PKG_CMD="opkg install"
+	pkg_installed() { opkg list-installed "$1" 2>/dev/null | grep -q "^$1 "; }
+	pkg_add()       { opkg install "$@"; }
+else
+	PKG_CMD="<no package manager found>"
+	pkg_installed() { return 1; }
+	pkg_add()       { return 1; }
+fi
+
+# ── Options ─────────────────────────────────────────────────────────────────
+# The action comes first; anything after it is a flag. An unknown flag is an
+# error rather than ignored -- a mistyped --bootstrap-adopt used to install
+# silently without the account it was asked for.
+ACTION=${1:-}
+[ $# -gt 0 ] && shift
+BOOTSTRAP_ADOPT=0
+REPLACE_CONF=0
+for _opt in "$@"; do
+	case "$_opt" in
+		--bootstrap-adopt) BOOTSTRAP_ADOPT=1 ;;
+		--replace-conf)    REPLACE_CONF=1 ;;
+		*) echo "ERROR: unknown option: $_opt" >&2; exit 1 ;;
+	esac
+done
+
+case "$ACTION" in
+
+	# ────────────────────────────────────────────────────────────────────────
+	install)
+		echo "Installing openUF to $INSTALL_DIR ..."
+
+		# Free space on the filesystem holding $INSTALL_DIR, in KB. Used to
+		# decide whether an OPTIONAL package can be afforded -- see below.
+		overlay_free_kb() {
+			df -k "$1" 2>/dev/null | awk 'NR==2 {print $4}'
+		}
+
+		# Feature packages are only installed when there is room to spare
+		# AFTERWARDS. On a small-flash board they are collectively bigger than
+		# openUF itself (nftables alone drags in ~210 KB of kernel modules), and
+		# filling the overlay to 100% is far worse than losing one feature: it
+		# breaks state.json writes, apk's own database, and any later upgrade.
+		# Threshold is deliberately generous -- jffs2 needs slack to garbage
+		# collect at all.
+		OPTIONAL_MIN_FREE_KB=400
+		try_optional() {
+			pkg=$1; feature=$2
+			if pkg_installed "$pkg"; then return 0; fi
+			free=$(overlay_free_kb "$INSTALL_DIR")
+			if [ -n "$free" ] && [ "$free" -lt "$OPTIONAL_MIN_FREE_KB" ]; then
+				echo "SKIP $pkg (${free}KB free, need ${OPTIONAL_MIN_FREE_KB}KB): $feature"
+				echo "     Bake it into your firmware image instead, or free space."
+				return 0
+			fi
+			echo "Installing $pkg ($feature) ..."
+			pkg_add "$pkg" >/dev/null 2>&1 \
+				|| echo "WARNING: failed to install $pkg -- $feature will not function."
+		}
+
+		# ── openUF's own files go in FIRST ───────────────────────────────
+		# Deliberately before any package install. The feature packages below
+		# are collectively larger than openUF, and on a small-flash board
+		# installing them first fills the overlay and leaves the product
+		# itself unable to be copied at all -- observed on a 512 KB overlay,
+		# where nftables' kernel modules alone (~210 KB) starved out the 126 KB
+		# of Lua and the install "succeeded" with no /opt/openuf on disk.
+		# Product first means a space shortage costs a feature, never openUF.
+
+		# An existing conf.lua IS the device's configuration -- above all the
+		# modelmap it was adopted under. Overwriting it on a reinstall, which
+		# is the natural way to upgrade, reset the modelmap to the generic
+		# one; on a DSA board that moves lan_cpueth and with it the identity
+		# MAC, and every inform afterwards is rejected with HTTP 400 while the
+		# old record goes Offline (CLAUDE.md: "lan_cpueth decides IDENTITY").
+		# Keep it, and ship the new default alongside as conf.lua.dist.
+		# setup.sh passes --replace-conf: it rewrites conf.lua from its own
+		# interview on purpose, and a re-run is meant to reproduce the whole
+		# configuration.
+		KEEP_CONF=""
+		if [ "$REPLACE_CONF" = 0 ] && [ -f "$INSTALL_DIR/conf.lua" ]; then
+			KEEP_CONF="$INSTALL_DIR/conf.lua.keep.$$"
+			cp "$INSTALL_DIR/conf.lua" "$KEEP_CONF" || KEEP_CONF=""
+		fi
+
+		# Copy Lua source. etc/ is excluded deliberately: the init script
+		# belongs in /etc/init.d (installed further down) and a second copy
+		# under $INSTALL_DIR would never be executed.
+		mkdir -p "$INSTALL_DIR"
+		cp -r openuf/* "$INSTALL_DIR/" || {
+			echo "ERROR: failed to copy openUF into $INSTALL_DIR"
+			echo "  Free space: $(overlay_free_kb "$INSTALL_DIR")KB. openUF needs ~130KB"
+			echo "  (comment-stripped) plus room for state and logs."
+			[ -n "$KEEP_CONF" ] && mv "$KEEP_CONF" "$INSTALL_DIR/conf.lua" 2>/dev/null
+			exit 1
+		}
+		rm -rf "$INSTALL_DIR/etc"
+
+		if [ -n "$KEEP_CONF" ]; then
+			mv "$INSTALL_DIR/conf.lua" "$INSTALL_DIR/conf.lua.dist"
+			mv "$KEEP_CONF" "$INSTALL_DIR/conf.lua"
+			echo "Kept the existing $INSTALL_DIR/conf.lua (shipped default: conf.lua.dist)."
+			echo "  Pass --replace-conf to overwrite it instead."
+			# The kept file may select a modelmap this release no longer ships.
+			_mm=$(sed -n 's/^dev = dofile("modelmap\/\(.*\)")$/\1/p' "$INSTALL_DIR/conf.lua" | head -1)
+			if [ -n "$_mm" ] && [ ! -f "$INSTALL_DIR/modelmap/$_mm" ]; then
+				echo "WARNING: conf.lua selects modelmap/$_mm, which this release does not ship."
+				echo "  openUF will not start until conf.lua names a profile that exists."
+			fi
+		fi
+
+		# Release tarballs arrive already comment-stripped (tools/dist.sh).
+		# When installing from a git clone, strip on the way in using the same
+		# tool so the device gets the same lean tree -- roughly half the bytes,
+		# and flash is scarce. conf.lua and the modelmaps keep their comments:
+		# they are the files meant to be hand-edited on the device.
+		if [ -f tools/strip.lua ] && command -v lua >/dev/null 2>&1; then
+			echo "Stripping comments from installed Lua ..."
+			for f in $(find "$INSTALL_DIR" -name '*.lua' \
+				! -name conf.lua ! -path "$INSTALL_DIR/modelmap/*"); do
+				lua tools/strip.lua "$f" > "$f.stripped" \
+					&& mv "$f.stripped" "$f"
+			done
+		fi
+
+		# A build stamp, so `openuf-update --check` can say what is running.
+		# dist.sh writes one into a release tarball; a git checkout gets one
+		# from git here; anything else keeps whatever the source carried.
+		if [ ! -f "$INSTALL_DIR/BUILD" ] && command -v git >/dev/null 2>&1 \
+			&& git rev-parse --short HEAD >/dev/null 2>&1; then
+			printf '%s %s\n' "$(git describe --always --dirty 2>/dev/null)" \
+				"$(date -u +%Y-%m-%dT%H:%MZ)" > "$INSTALL_DIR/BUILD"
+		fi
+
+		# Create state directory
+		mkdir -p "$STATE_DIR"
+		# The UCI file the OpenWrt package and its LuCI app configure openUF
+		# through. Created EMPTY here: uciconf.lua only takes over when the
+		# file has a `main` section, so a tarball install keeps running as its
+		# conf.lua says -- but LuCI's uci.load() rejects a file that does not
+		# exist, and the Settings page could not create it on first save.
+		[ -e /etc/config/openuf ] || : > /etc/config/openuf
+
+		# Keep the device's identity across a firmware upgrade.
+		# sysupgrade preserves /etc/config and a short built-in list; it knows
+		# nothing about $STATE_DIR or conf.lua, so a stock `sysupgrade` drops
+		# state.json -- mac, authkey, cfgversion, swvlan_backup -- and the
+		# board's modelmap selection along with it. The device comes back up
+		# unadopted, as a generic dualband AP, and the controller no longer
+		# recognises it. Upstream verified it on a live Archer C5:
+		# `sysupgrade -b` produced 29 entries and neither file was among them.
+		# The Lua itself is deliberately NOT preserved -- it is reinstalled
+		# from this script anyway, and carrying an old tree onto a new OpenWrt
+		# is how you get a silent version mismatch.
+		#
+		# Idempotent (grep -qxF), which matters here specifically: update.sh
+		# and setup.sh both re-run `install.sh install`.
+		SYSUPGRADE_CONF=/etc/sysupgrade.conf
+		for keep in "$STATE_DIR/" "$INSTALL_DIR/conf.lua"; do
+			if ! grep -qxF "$keep" "$SYSUPGRADE_CONF" 2>/dev/null; then
+				# A hand-edited file need not end in a newline, and
+				# appending straight onto one that does not splices our
+				# path onto the user's last line: their entry is
+				# destroyed and ours is never registered.  `tail -c1` is
+				# empty exactly when the file already ends in a newline
+				# (command substitution strips it), so this terminates
+				# the last line only when it needs it.
+				if [ -s "$SYSUPGRADE_CONF" ] \
+					&& [ -n "$(tail -c1 "$SYSUPGRADE_CONF" 2>/dev/null)" ]; then
+					echo >> "$SYSUPGRADE_CONF"
+				fi
+				echo "$keep" >> "$SYSUPGRADE_CONF"
+				echo "Registered $keep with sysupgrade (survives a firmware upgrade)."
+			fi
+		done
+
+		# Symlink syswrapper.sh into PATH
+		ln -sf "$INSTALL_DIR/hook/syswrapper.sh" "$BIN_LINK"
+		chmod +x "$BIN_LINK"
+		# And the command-line front door (`openuf status`, `openuf --version`),
+		# the same one the OpenWrt package installs.
+		ln -sf "$INSTALL_DIR/hook/openuf-cli.sh" /usr/bin/openuf
+		chmod +x "$INSTALL_DIR/hook/openuf-cli.sh"
+		# The router-to-AP conversion as a command (setup.sh's last phase),
+		# for the LuCI app's button and for --revert.
+		ln -sf "$INSTALL_DIR/hook/openuf-convert.sh" /usr/sbin/openuf-convert
+		chmod +x "$INSTALL_DIR/hook/openuf-convert.sh"
+		# openuf-deps: what openUF needs installed, and the wpad swap.
+		ln -sf "$INSTALL_DIR/hook/openuf-deps.sh" /usr/sbin/openuf-deps
+		chmod +x "$INSTALL_DIR/hook/openuf-deps.sh"
+
+		# The updater, as a command. Copied rather than symlinked: it has to
+		# survive its own `rm -rf /opt/openuf` during a rollback.
+		if [ -f update.sh ]; then
+			cp update.sh /usr/bin/openuf-update && chmod +x /usr/bin/openuf-update
+		fi
+
+		# Install init.d service
+		cp openuf/etc/init.d/openuf "$INIT_SCRIPT"
+		chmod +x "$INIT_SCRIPT"
+
+		# ── Dependencies, now that openUF itself is safely installed ──────
+		# REQUIRED: openUF cannot function without these. They may already be
+		# baked into the firmware image (the only way to fit them on a small
+		# board), so a present package is silently fine.
+		#
+		# lua-openssl provides AES-128-CBC/GCM (luacrypto was dropped from the
+		# feeds) and is effectively mandatory: the controller will not finish
+		# provisioning a device that has never sent a genuine GCM inform. There
+		# is no Lua zlib binding in 25.12, so inform-response decompression is
+		# handled in-tree by openuf/inflate.lua and needs no package.
+		#
+		# libuci-lua provides require("uci") and is what every wireless read
+		# and write goes through (ucihelper.lua, switchvlan.lua, usteer.lua).
+		# It is NOT pulled in by `lua`, and its absence is the single most
+		# invisible failure openUF has: every ucihelper call is pcall-wrapped
+		# (correctly -- a UCI error must not take the inform loop down), so the
+		# device adopts, reports its ports and statistics, and looks perfectly
+		# healthy while radio_table goes out EMPTY and the controller has no
+		# radio to provision a WLAN onto. Confirmed on a real JIDU6101: adopted,
+		# port table correct, and not one pushed SSID ever appeared -- until
+		# this package was installed, at which point the very next config push
+		# created every VAP.
+		MISSING=""
+		for pkg in lua lua-cjson luasocket lua-openssl luabitop libuci-lua iw; do
+			if ! pkg_installed "$pkg"; then
+				MISSING="$MISSING $pkg"
+			fi
+		done
+		if [ -n "$MISSING" ]; then
+			echo "Installing required packages:$MISSING"
+			pkg_add $MISSING || {
+				echo "WARNING: failed to install:$MISSING"
+				echo "  Install them by hand with: $PKG_CMD$MISSING"
+				echo "  Without lua-openssl in particular, adoption cannot complete"
+				echo "  (the controller requires a genuine AES-128-GCM inform)."
+			}
+		fi
+
+		# OPTIONAL: each one silently disables exactly one feature when absent
+		# -- provisioning still reports success while the feature does nothing
+		# -- so they are installed when affordable rather than merely mentioned.
+		# Only where the board declares gpio LEDs its running kernel cannot
+		# drive: a Xiaomi AX3000T's case LED is a gpio pair the stock filogic
+		# image has no driver for, so /sys/class/leds holds only the mt76 radio
+		# LEDs -- which on that board are wired to nothing. Locate then
+		# "succeeds" against an LED that does not physically exist. 9 KB, and
+		# pointless on a board whose LEDs already registered (the JIDU6101's
+		# three status LEDs do), hence the check rather than an unconditional
+		# install. (Upstream's finding.)
+		if [ -d /sys/bus/platform/devices/leds ] \
+			&& ! ls /sys/class/leds 2>/dev/null | grep -qv '^mt76-'; then
+			try_optional kmod-leds-gpio "status LED (Locate, Manage > LED)"
+		fi
+		try_optional lldpd         "LLDP topology / neighbour discovery"
+		try_optional hostapd-utils "Minimum RSSI, client kick, block-deauth"
+		try_optional usteer        "Band Steering"
+		try_optional ip-bridge     "wired clients behind the AP (bridge fdb)"
+		try_optional nftables      "client Block/Unblock + Multicast/Broadcast Blocker"
+		# ...and the Blocker half additionally needs the bridge family's `meta`
+		# expression, which lives in nft_meta_bridge and is NOT pulled in by
+		# nftables. Missing on a stock filogic AND ath79 image alike. Without
+		# it the table, chain and allow-list set all build fine and only the
+		# drop rule is rejected, so the control reports success everywhere and
+		# blocks nothing. firewall.lua's block-sta uses `ether saddr` only,
+		# needs no module, and is unaffected -- which is what hid this.
+		try_optional kmod-nft-bridge "Multicast/Broadcast Blocker (bridge meta)"
+		# shaper.lua shells out to `tc` for the WiFi Speed Limit, and nothing
+		# installed it -- busybox has no tc. tc-tiny is enough (htb + fq_codel).
+		try_optional tc-tiny       "WiFi Speed Limit (tc)"
+		# ...and the DOWNLINK half needs sch_htb while the UPLINK half needs the
+		# act_police action, which is a separate module and is not in every
+		# image. A filogic board has sch_htb, sch_ingress, act_gact, act_mirred
+		# and act_skbedit but NO act_police: `tc filter ... police` fails with
+		# "Failed to load TC action module", so the download cap applies and the
+		# upload cap silently does not. Half a feature reporting success.
+		try_optional kmod-sched-act-police "WiFi Speed Limit, upload half (tc police)"
+		# No coreutils-stat any more: inform.lua used to fork `stat -c %Y` to
+		# notice an out-of-process state.json write and fell back to the file's
+		# contents when the applet was missing (a real WDR3500 has none). The
+		# contents are the stronger token and cost no fork, so they are the
+		# only token now, and the 40 KB package bought nothing.
+
+		# luasec, but only when it is actually needed: inform.lua TLS-wraps the
+		# socket for an https:// inform URL and fails with a clear error
+		# without it. The UniFi default is plain http on 8080, so installing it
+		# unconditionally would spend flash on a feature almost nobody uses --
+		# hence the check against the URL openUF will really use: the adopted
+		# state file if there is one, otherwise conf.lua's default. (state.json
+		# escapes its slashes, which does not affect the scheme match.)
+		INFORM_URL=$(sed -n 's/.*"inform_url":"\([^"]*\)".*/\1/p' \
+			"$STATE_DIR/state.json" 2>/dev/null | head -1)
+		if [ -z "$INFORM_URL" ]; then
+			INFORM_URL=$(sed -n 's/.*inform_url[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' \
+				"$INSTALL_DIR/conf.lua" 2>/dev/null | head -1)
+		fi
+		case "$INFORM_URL" in
+			https*) try_optional luasec "TLS for the https:// inform URL" ;;
+		esac
+
+		# A full wpad build, not negotiable: every controller-pushed WLAN
+		# carries bss_transition, which wpad-basic-* rejects and takes the
+		# radio down with. The swap -- the same crypto library, so no extra
+		# flash; the radios bounce once -- lives in hook/openuf-deps.sh, the
+		# command the LuCI overview's button runs too. The init script
+		# refuses to start until a full build is in place.
+		if ! "$INSTALL_DIR/hook/openuf-deps.sh" --install --only-wpad; then
+			echo "WARNING: no full wpad build is installed -- openUF will not start until there is one (openuf deps --install)."
+		fi
+
+		# Enable and start services
+		"$INIT_SCRIPT" enable 2>/dev/null
+		"$INIT_SCRIPT" start
+
+		# Enable lldpd
+		if [ -f /etc/init.d/lldpd ]; then
+			/etc/init.d/lldpd enable
+			/etc/init.d/lldpd start
+		else
+			echo "WARNING: lldpd init script not found; install lldpd and run:"
+			echo "  /etc/init.d/lldpd enable && /etc/init.d/lldpd start"
+		fi
+
+		# ── Optional: --bootstrap-adopt ──────────────────────────────────
+		# Creates a temporary, non-root SSH account (ubnt/ubnt) matching real
+		# Ubiquiti hardware's factory-default login, so first adoption can
+		# complete without presetting a root password. Scoped to only ever
+		# run `syswrapper.sh set-adopt` (see hook/adopt-shell.sh) and only
+		# able to write $STATE_DIR -- no other privilege. Self-locks once the
+		# device is adopted and re-enables on factory reset (see
+		# inform.lua's M._sync_bootstrap_account). See USAGE.md.
+		if [ "$BOOTSTRAP_ADOPT" = 1 ]; then
+			echo "Setting up SSH bootstrap adoption account (ubnt/ubnt) ..."
+
+			ALREADY_ADOPTED=0
+			if [ -f "$STATE_DIR/state.json" ] \
+				&& grep -q '"adopted":true' "$STATE_DIR/state.json"; then
+				ALREADY_ADOPTED=1
+			fi
+
+			if [ "$ALREADY_ADOPTED" = "1" ]; then
+				echo "  Device is already adopted -- skipping account creation."
+			elif grep -q "^ubnt:" /etc/passwd 2>/dev/null; then
+				echo "  ubnt account already exists -- leaving as-is."
+			else
+				# Dedicated group so $STATE_DIR can be made group-writable by
+				# the bootstrap account without granting it anything else.
+				BA_GID=900
+				while grep -q "^[^:]*:[^:]*:$BA_GID:" /etc/group 2>/dev/null; do
+					BA_GID=$((BA_GID + 1))
+				done
+				echo "openuf:x:$BA_GID:" >> /etc/group
+
+				BA_UID=900
+				while awk -F: -v id="$BA_UID" \
+					'$3==id{f=1} END{exit !f}' /etc/passwd 2>/dev/null; do
+					BA_UID=$((BA_UID + 1))
+				done
+
+				ADOPT_SHELL="$INSTALL_DIR/hook/adopt-shell.sh"
+				chmod +x "$ADOPT_SHELL"
+
+				echo "ubnt:x:$BA_UID:$BA_GID:openuf bootstrap adoption:$STATE_DIR:$ADOPT_SHELL" \
+					>> /etc/passwd
+				HASH=$(openssl passwd -6 ubnt)
+				echo "ubnt:$HASH:::::::" >> /etc/shadow
+
+				chgrp "$BA_GID" "$STATE_DIR"
+				chmod g+w "$STATE_DIR"
+
+				# Group-writable directory alone only covers *creating* a new
+				# state.json. If one somehow already exists owned by root
+				# (e.g. an admin ran `syswrapper.sh reset-inform` by hand
+				# before ever using this account), ubnt can't write to it --
+				# opening an existing file for writing needs permission on
+				# the file itself, not just the directory. Pre-create it
+				# group-writable so this works regardless of which side
+				# (root or ubnt) writes to it first and thereafter.
+				[ -f "$STATE_DIR/state.json" ] || : > "$STATE_DIR/state.json"
+				chgrp "$BA_GID" "$STATE_DIR/state.json"
+				chmod 664 "$STATE_DIR/state.json"
+
+				# Tell the running daemon this account exists and should be
+				# locked/unlocked to track adopted state.
+				sed -i 's/bootstrap_adopt_user = nil/bootstrap_adopt_user = "ubnt"/' \
+					"$INSTALL_DIR/conf.lua"
+
+				echo "  Created non-root 'ubnt' account (password: ubnt),"
+				echo "  restricted to running 'syswrapper.sh set-adopt' only."
+				echo "  It self-locks once the device is adopted and"
+				echo "  re-enables on factory reset."
+			fi
+		fi
+
+		echo "Done.  Check status with: logread -e openuf"
+		echo ""
+		echo "Next steps:"
+		echo "  1. If controller is on a different subnet:"
+		echo "       syswrapper.sh set-inform http://<controller>:8080/inform"
+		echo "  2. Open the UniFi controller → Devices → click Adopt"
+		;;
+
+	# ────────────────────────────────────────────────────────────────────────
+	uninstall)
+		echo "Uninstalling openUF ..."
+
+		# Stop and disable service
+		if [ -f "$INIT_SCRIPT" ]; then
+			"$INIT_SCRIPT" stop  2>/dev/null
+			"$INIT_SCRIPT" disable 2>/dev/null
+			rm -f "$INIT_SCRIPT"
+		fi
+
+		# Remove symlink, and the updater command
+		rm -f "$BIN_LINK" /usr/bin/openuf-update /usr/bin/openuf /usr/sbin/openuf-convert /usr/sbin/openuf-deps
+
+		# The controller's cron jobs (sysconf.lua) call the symlink just
+		# removed; take openUF's marked block out of root's crontab so crond
+		# does not fail on it every night. Lines outside the markers stay.
+		if grep -q '^# openuf-cron-begin' /etc/crontabs/root 2>/dev/null; then
+			sed -i '/^# openuf-cron-begin/,/^# openuf-cron-end$/d' /etc/crontabs/root
+			/etc/init.d/cron restart 2>/dev/null
+			echo "Removed openUF's controller cron jobs from /etc/crontabs/root."
+		fi
+
+		# Remove the SSH bootstrap account/group if present (hygiene --
+		# symmetric with what install --bootstrap-adopt added, regardless of
+		# whether that flag is passed here).
+		if grep -q "^ubnt:" /etc/passwd 2>/dev/null; then
+			sed -i '/^ubnt:/d' /etc/passwd
+			sed -i '/^ubnt:/d' /etc/shadow
+			echo "Removed SSH bootstrap account 'ubnt'."
+		fi
+		if grep -q "^openuf:" /etc/group 2>/dev/null; then
+			sed -i '/^openuf:/d' /etc/group
+		fi
+
+		# Drop the sysupgrade keep-list entry for conf.lua: that file goes
+		# with $INSTALL_DIR (below), and a line pointing at nothing is just
+		# litter in a file the user may also hand-edit.
+		# $STATE_DIR/ deliberately stays registered. The directory outlives
+		# this uninstall by design -- see the message at the end -- so that a
+		# later reinstall still finds the authkey, and un-registering it would
+		# hand the next sysupgrade precisely the deletion the entry exists to
+		# prevent. It is also not necessarily ours: an admin may have added
+		# that line by hand before openUF was ever installed. Should the user
+		# later remove the directory themselves, the stale line costs nothing
+		# -- add_conffiles swallows find's error and returns 0.
+		# Fixed-string, whole-line matching -- the mirror of the grep -qxF
+		# the install branch adds them with. Not sed: the entry contains the
+		# delimiter, and busybox sed's -i is not the same animal as GNU's.
+		if [ -f /etc/sysupgrade.conf ]; then
+			SU_TMP=$(mktemp 2>/dev/null)
+			if [ ! -f "$SU_TMP" ]; then
+				echo "Warning: mktemp failed, leaving /etc/sysupgrade.conf alone."
+			else
+				grep -vxF -e "$INSTALL_DIR/conf.lua" \
+					/etc/sysupgrade.conf > "$SU_TMP"
+				su_rc=$?
+				# 0 is matches; 1 is an empty result, legitimate here (the
+				# file held nothing else). 2 is an error, and the temp file
+				# is then whatever got written before it -- on these boards
+				# a full /tmp tmpfs is the likely cause. Copying that back
+				# would silently drop the user's own keep entries, and they
+				# would find out at the next firmware upgrade.
+				if [ "$su_rc" -le 1 ]; then
+					cat "$SU_TMP" > /etc/sysupgrade.conf
+				else
+					echo "Warning: could not rewrite /etc/sysupgrade.conf," \
+						"leaving it alone."
+				fi
+				rm -f "$SU_TMP"
+			fi
+		fi
+
+		# Remove installed files (leave state dir so authkey is preserved)
+		rm -rf "$INSTALL_DIR"
+
+		echo "Done.  State dir $STATE_DIR left intact (remove manually if needed)."
+		;;
+
+	# ────────────────────────────────────────────────────────────────────────
+	*)
+		echo ""
+		echo "Usage: $0 <install|uninstall> [--bootstrap-adopt] [--replace-conf]"
+		echo ""
+		echo "  install    Copy files to $INSTALL_DIR, create init.d service,"
+		echo "             symlink syswrapper.sh to $BIN_LINK. An existing"
+		echo "             conf.lua is kept (the shipped one lands as conf.lua.dist)"
+		echo "             so a reinstall never changes the device's modelmap."
+		echo "             Registers $STATE_DIR/ and conf.lua in /etc/sysupgrade.conf"
+		echo "             so the adoption survives a firmware upgrade."
+		echo ""
+		echo "  install --replace-conf"
+		echo "             Overwrite conf.lua with the shipped default instead."
+		echo ""
+		echo "  install --bootstrap-adopt"
+		echo "             Also create a temporary, non-root SSH account"
+		echo "             (ubnt/ubnt) restricted to running 'set-adopt' only,"
+		echo "             so first adoption works without presetting a root"
+		echo "             password. Self-locks once adopted. See USAGE.md."
+		echo ""
+		echo "  uninstall  Remove installed files and service."
+		echo "             State directory ($STATE_DIR) is preserved."
+		echo "             Removes the bootstrap account if present."
+		echo ""
+		;;
+esac

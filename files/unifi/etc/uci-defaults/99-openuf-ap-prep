@@ -1,0 +1,80 @@
+#!/bin/sh
+# openUF image: turn this JioRouter into a wired access point on its very first
+# boot, BEFORE the network comes up (uci-defaults run inside /etc/init.d/boot).
+#
+# Why here and not in setup.sh: a stock first boot is a router -- 192.168.1.1
+# with a DHCP server on every LAN socket. Plugged into an existing LAN that is a
+# rogue DHCP server from the first second. Converting before netifd starts means
+# the device never acts as a router at all, and any socket (WAN included) works
+# as the uplink.
+#
+# Runs once (uci-defaults are deleted after exit 0). Re-running is harmless.
+
+. /lib/functions.sh
+
+# ── Network: no WAN, every socket in br-lan, management address by DHCP ──────
+WAN_DEV=$(uci -q get network.wan.device)
+[ -n "$WAN_DEV" ] || WAN_DEV=wan
+
+uci -q delete network.wan
+uci -q delete network.wan6
+
+BR=$(uci -q show network | sed -n "s/^network\.\([^.=]*\)\.name='br-lan'$/\1/p" | head -1)
+if [ -n "$BR" ]; then
+	case " $(uci -q get "network.$BR.ports") " in
+		*" $WAN_DEV "*) ;;
+		*) uci add_list "network.$BR.ports=$WAN_DEV" ;;
+	esac
+fi
+
+uci set network.lan.proto='dhcp'
+for o in ipaddr netmask gateway dns ip6assign ip6addr ip6hint ip6class; do
+	uci -q delete "network.lan.$o"
+done
+uci commit network
+
+# ── No DHCP/DNS server, no firewall, no multi-WAN ────────────────────────────
+if [ -f /etc/config/dhcp ]; then
+	uci -q set dhcp.lan.ignore='1'
+	uci -q set dhcp.lan.dhcpv6='disabled'
+	uci -q set dhcp.lan.ra='disabled'
+	uci -q delete dhcp.wan
+	uci commit dhcp
+fi
+for svc in firewall dnsmasq odhcpd mwan3; do
+	[ -x "/etc/init.d/$svc" ] && "/etc/init.d/$svc" disable
+done
+
+# ── Identity on the LAN (shows up in the UCG client / lease list) ────────────
+# JioIDU-AP-xxxx (last 4 hex digits of a burnt-in MAC) so several converted
+# IDUs are told apart in the UCG client and lease lists.
+SUFFIX=""
+for a in /sys/class/net/*/address; do
+	case "$a" in */lo/*) continue ;; esac
+	m=$(cat "$a" 2>/dev/null)
+	case "$m" in ""|00:00:00:00:00:00) continue ;; esac
+	SUFFIX=$(echo "$m" | tr -d ':' | tail -c 5 | tr 'a-f' 'A-F')
+	break
+done
+uci -q set system.@system[0].hostname="JioIDU-AP${SUFFIX:+-$SUFFIX}"
+uci commit system
+
+# ── WiFi: radios on, but NO SSID on the air until the controller pushes one ──
+# 20-jiorouter-defaults creates an OPEN "OpenWrt" SSID on both radios, bridged
+# into lan. On an AP that would be an open door into the management VLAN, so
+# every pre-existing wifi-iface is switched off. openUF creates its own
+# openuf_* sections from the controller's WLANs (trojan, trojan_2).
+for s in $(uci -q show wireless | sed -n "s/^wireless\.\([^.=]*\)=wifi-iface$/\1/p"); do
+	case "$s" in openuf_*) continue ;; esac
+	uci -q set "wireless.$s.disabled=1"
+done
+for r in $(uci -q show wireless | sed -n "s/^wireless\.\([^.=]*\)=wifi-device$/\1/p"); do
+	uci -q delete "wireless.$r.disabled"
+	# Regulatory domain PA (as board.d intends; 20-jiorouter-defaults strips
+	# it from pristine radios). openUF is also told --country PA, so the
+	# controller's site country does not replace it after adoption.
+	uci -q set "wireless.$r.country=PA"
+done
+uci commit wireless
+
+exit 0

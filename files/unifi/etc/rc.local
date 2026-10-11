@@ -1,0 +1,12 @@
+# Put your custom commands here that should be executed once
+# the system init finished. By default this file does nothing.
+
+# UDP GRO forwarding on the AP bridge (Tailscale/QUIC throughput).
+command -v ethtool >/dev/null 2>&1 && \
+	ethtool -K br-lan rx-udp-gro-forwarding on rx-gro-list off >/dev/null 2>&1
+
+# Re-check at every boot that the ubnt bootstrap account is locked once the
+# AP is adopted (cron repeats this every 5 minutes).
+[ -x /usr/sbin/openuf-lockcheck ] && /usr/sbin/openuf-lockcheck
+
+exit 0

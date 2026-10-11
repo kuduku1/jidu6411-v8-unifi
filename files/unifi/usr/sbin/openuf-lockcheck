@@ -1,0 +1,14 @@
+#!/bin/sh
+# Belt and braces for the ubnt/ubnt bootstrap account: once the controller has
+# adopted this AP, make sure the account is locked. openUF already does this on
+# every config push; this cron job (every 5 min) covers the gap if it ever
+# doesn't. It only ever locks -- openUF unlocks it again if the AP is forgotten
+# by the controller, so re-adoption still works.
+
+grep -q '"adopted":true' /etc/openuf/state.json 2>/dev/null || exit 0
+grep -q '^ubnt:' /etc/shadow 2>/dev/null || exit 0
+case "$(sed -n 's/^ubnt:\([^:]*\):.*/\1/p' /etc/shadow)" in
+	'!'*) exit 0 ;;
+esac
+passwd -l ubnt >/dev/null 2>&1 \
+	&& logger -t openuf-lockcheck "AP is adopted: locked the ubnt bootstrap account"

@@ -1,0 +1,108 @@
+#!/bin/sh
+# openUF image: first-boot provisioning.
+#
+# The image already carries openUF itself (/usr/share/openuf-src, pinned to the
+# commit in COMMIT) and was turned into a wired AP by
+# /etc/uci-defaults/99-openuf-ap-prep. What it cannot carry is openUF's Lua
+# runtime, so this waits until the package feed is reachable through the
+# uplink, then runs openUF's own setup.sh unattended:
+#
+#   packages   lua lua-cjson luasocket lua-openssl luabitop libuci-lua
+#              (+ lldpd hostapd-utils usteer ip-bridge where they install)
+#   profile    generated from this board (--modelmap auto)
+#   openUF     inform URL http://10.0.0.1:8080/inform, ubnt/ubnt bootstrap
+#              account (self-locking on adoption), controller WLANs only,
+#              regulatory domain PA (override)
+#
+# then reboots once. Progress: /root/openuf-firstboot.log and `logread -e openuf`.
+# On failure it retries every few minutes; nothing here touches the network.
+
+CONTROLLER=10.0.0.1
+SRC_RO=/usr/share/openuf-src
+SRC=/tmp/openuf-src
+DONE=/etc/openuf-firstboot.done
+LOG=/root/openuf-firstboot.log
+UBNT_HASH='$6$8X36UZv2Od7A0CQr$C5Ce93jNwRiDrL4bhqLOlMLyhlH6DUvcFa5IbO9YXx7HTumJoWSYJxwzyAkXurxWnDz7VSpq8ES2Mtd95T3yq1'
+
+[ -f "$DONE" ] && exit 0
+
+exec >>"$LOG" 2>&1
+note() { echo "$(date '+%F %T') $*"; logger -t openuf-firstboot "$*"; }
+
+# Tailscale: the daemon and its LuCI page (Services -> Tailscale) from the
+# OpenWrt package feed; kmod-tun is already in the image. Never fatal: openUF matters
+# more, and `apk add tailscale` can be re-run by hand. No login happens here --
+# that is `tailscale up` (or the LuCI page) with the owner's own account.
+install_tailscale() {
+	if command -v tailscale >/dev/null 2>&1; then
+		note "tailscale already installed"
+		return 0
+	fi
+	if apk add tailscale luci-app-tailscale-community; then
+		note "tailscale + its LuCI page installed from the package feed"
+	else
+		note "tailscale could not be installed (apk add failed); run it by hand later"
+		return 0
+	fi
+	/etc/init.d/tailscale enable 2>/dev/null
+	note "tailscale ready: log in with 'tailscale up --accept-dns=false'"
+}
+
+
+note "=== openUF first-boot provisioning (openUF $(cat "$SRC_RO/COMMIT" 2>/dev/null | cut -c1-7))"
+
+# Give netifd, the PCIe radio and NTP a moment.
+sleep 20
+
+attempt=0
+while [ ! -f "$DONE" ]; do
+	attempt=$((attempt + 1))
+
+	# Gate: the feed must actually answer. `apk update` needs a lease, a
+	# default route, DNS and a sane clock (TLS) -- one check covers all four.
+	if ! apk update >/dev/null 2>&1; then
+		[ $((attempt % 10)) = 1 ] && note "package feed not reachable yet (attempt $attempt) -- is the uplink cable in and does the LAN have internet?"
+		if [ "$attempt" -lt 20 ]; then sleep 30; else sleep 300; fi
+		continue
+	fi
+
+	note "feed reachable; running openUF setup.sh (attempt $attempt)"
+	rm -rf "$SRC"
+	cp -a "$SRC_RO" "$SRC"
+
+	( cd "$SRC" && OPENUF_SRC="$SRC" NO_COLOR=1 sh ./setup.sh \
+		--yes \
+		--no-ap-mode \
+		--modelmap auto \
+		--controller "$CONTROLLER" \
+		--bootstrap \
+		--exclusive-wlan \
+		--country PA \
+		--no-reboot ) </dev/null
+	rc=$?
+
+	if [ "$rc" = 0 ] && [ -f /opt/openuf/conf.lua ]; then
+		# install.sh hashes the ubnt password with the openssl CLI, which
+		# this image does not have -- it would leave the account with an
+		# EMPTY hash, which dropbear refuses, and L2 adoption would fail.
+		if grep -q '^ubnt::' /etc/shadow 2>/dev/null; then
+			sed -i "s|^ubnt::|ubnt:$UBNT_HASH:|" /etc/shadow
+			note "set the ubnt bootstrap password hash (no openssl CLI on this image)"
+		fi
+		# Keep the generated profile across sysupgrade too.
+		grep -qx /opt/openuf/ /etc/sysupgrade.conf 2>/dev/null \
+			|| echo /opt/openuf/ >> /etc/sysupgrade.conf
+		install_tailscale
+		touch "$DONE"
+		/etc/init.d/openuf-firstboot disable
+		note "openUF installed; profile: $(sed -n 's|^dev = dofile("modelmap/\(.*\)\.lua")|\1|p' /opt/openuf/conf.lua). Rebooting."
+		cp "$SRC/openuf/modelmap/autodetected.lua" /root/openuf-autodetected.lua 2>/dev/null
+		sync
+		sleep 3
+		reboot
+		exit 0
+	fi
+
+	note "setup.sh failed (exit $rc); see above. Retrying in 5 minutes."
+	sleep 300
+done

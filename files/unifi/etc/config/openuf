@@ -1,0 +1,5 @@
+# JIDU6J11 v8: per-band overrides for openUF (see USAGE.md, "htmode_floor").
+# 2.4 GHz: run WiFi 6 (HE20) instead of WiFi 4 (HT20). openUF's hardware
+# clamp still runs afterwards, so if the radio does not report HE it stays HT.
+config radio 'ng'
+	option htmode_floor 'HE20'

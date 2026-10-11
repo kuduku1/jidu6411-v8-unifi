@@ -1,0 +1,55 @@
+name: Build JIDU6J11 v8
+
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: Which image(s) to build
+        type: choice
+        options: [both, unifi, stock]
+        default: both
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: ${{ fromJSON(inputs.variant == 'both' && '["unifi","stock"]' || format('["{0}"]', inputs.variant)) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          sudo docker image prune --all --force || true
+          df -h /
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang flex bison g++ gawk gcc-multilib \
+            g++-multilib gettext git libncurses-dev libssl-dev python3-setuptools \
+            python3-dev rsync swig unzip zlib1g-dev file wget zstd
+
+      - name: Build (${{ matrix.variant }})
+        env:
+          VARIANT: ${{ matrix.variant }}
+          WORK: ${{ github.workspace }}/../work
+        run: ./build.sh
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: jidu6411-v8-${{ matrix.variant }}
+          path: out/${{ matrix.variant }}
+          retention-days: 30
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-${{ matrix.variant }}
+          path: ${{ github.workspace }}/../work/openwrt/logs
+          if-no-files-found: ignore
