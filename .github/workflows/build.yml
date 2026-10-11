@@ -40,16 +40,22 @@ jobs:
         run: ./build.sh
 
       - name: Upload firmware
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: jidu6411-v8-${{ matrix.variant }}
           path: out/${{ matrix.variant }}
           retention-days: 30
+
+      - name: Copy logs to workspace
+        if: failure()
+        run: |
+          mkdir -p logs-out
+          cp -r ${{ github.workspace }}/../work/openwrt/logs/* logs-out/ 2>/dev/null || true
 
       - name: Upload build log on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: logs-${{ matrix.variant }}
-          path: ${{ github.workspace }}/../work/openwrt/logs
+          path: logs-out/
           if-no-files-found: ignore
