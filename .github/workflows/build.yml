@@ -36,8 +36,7 @@ jobs:
       - name: Build (${{ matrix.variant }})
         env:
           VARIANT: ${{ matrix.variant }}
-          WORK: ${{ github.workspace }}/../work
-        run: ./build.sh
+        run: bash ./build.sh
 
       - name: Upload firmware
         uses: actions/upload-artifact@v5
@@ -51,5 +50,5 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: logs-${{ matrix.variant }}
-          path: ${{ github.workspace }}/../work/openwrt/logs
+          path: work-${{ matrix.variant }}/openwrt/logs
           if-no-files-found: ignore
