@@ -1,4 +1,4 @@
-From 22df3d727848eadcf7c0b3c2d4fe3dd8d54e1876 Mon Sep 17 00:00:00 2001
+From 2979ef583f2b175d5a5160d682ccf787b31c3af8 Mon Sep 17 00:00:00 2001
 From: v8-build <v8@build>
 Date: Sun, 11 Oct 2026 18:30:17 +0000
 Subject: [PATCH 5/5] jidu6j11: v8 adjustments
@@ -170,9 +170,9 @@ Subject: [PATCH 5/5] jidu6j11: v8 adjustments
  ...whose-rate-is-wider-than-the-channel.patch |  29 --
  ...of-an-MLO-station-when-it-is-removed.patch |  72 ---
  ...e-RX-link-of-each-station-on-its-own.patch | 157 -------
- target/linux/qualcommbe/image/ipq95xx.mk      |   5 +-
+ target/linux/qualcommbe/image/ipq95xx.mk      |   8 +-
  .../ipq95xx/base-files/etc/board.d/02_network |   1 +
- 162 files changed, 3107 insertions(+), 4543 deletions(-)
+ 162 files changed, 3108 insertions(+), 4545 deletions(-)
  create mode 100644 package/firmware/jidu6j11-board-data/Makefile
  create mode 100644 package/firmware/jidu6j11-board-data/files/board-2.IPQ9574.bin
  create mode 100644 package/firmware/jidu6j11-board-data/files/board-2.QCN9074.bin
@@ -11045,10 +11045,10 @@ index d4645a98..00000000
 - 			goto out;
 - 		}
 diff --git a/target/linux/qualcommbe/image/ipq95xx.mk b/target/linux/qualcommbe/image/ipq95xx.mk
-index faf468d3..8c0435cc 100644
+index faf468d3..053d1264 100644
 --- a/target/linux/qualcommbe/image/ipq95xx.mk
 +++ b/target/linux/qualcommbe/image/ipq95xx.mk
-@@ -67,9 +67,12 @@ define Device/jiorouter_ax6000-jidu6j11
+@@ -67,12 +67,14 @@ define Device/jiorouter_ax6000-jidu6j11
  	SOC := ipq9554
  	BLOCKSIZE := 128k
  	PAGESIZE := 2048
@@ -11060,8 +11060,12 @@ index faf468d3..8c0435cc 100644
 -		ipq-wifi-jiorouter_ax6000-jidu6j11 \
 +		jidu6j11-board-data \
  		uboot-envtools kmod-leds-gpio kmod-gpio-button-hotplug \
- 		kmod-qcom-ppe kmod-usb3 kmod-usb-dwc3 kmod-usb-dwc3-qcom \
- 		kmod-ledtrig-netdev
+-		kmod-qcom-ppe kmod-usb3 kmod-usb-dwc3 kmod-usb-dwc3-qcom \
+-		kmod-ledtrig-netdev
++		kmod-qcom-ppe kmod-usb3 kmod-usb-dwc3 kmod-usb-dwc3-qcom
+ endef
+ 
+ define Device/jiorouter_ax6000-jidu6j11-6111
 diff --git a/target/linux/qualcommbe/ipq95xx/base-files/etc/board.d/02_network b/target/linux/qualcommbe/ipq95xx/base-files/etc/board.d/02_network
 index fca8549f..28674f32 100644
 --- a/target/linux/qualcommbe/ipq95xx/base-files/etc/board.d/02_network
