@@ -1,4 +1,4 @@
-From 9ef3ccbb095793c8f3e3351a3a6574c037cbdd38 Mon Sep 17 00:00:00 2001
+From 22df3d727848eadcf7c0b3c2d4fe3dd8d54e1876 Mon Sep 17 00:00:00 2001
 From: v8-build <v8@build>
 Date: Sun, 11 Oct 2026 18:30:17 +0000
 Subject: [PATCH 5/5] jidu6j11: v8 adjustments
@@ -44,6 +44,9 @@ Subject: [PATCH 5/5] jidu6j11: v8 adjustments
  ...11k-Support-to-assign-m3-dump-memory.patch |   2 +-
  ...8-wifi-ath11k-Fix-the-WMM-param-type.patch |   2 +-
  ...49-wifi-ath11k-fix-monitor-rx-pktlen.patch |   6 +-
+ ...-CE-interrupt-enable-disable-for-AHB.patch |  57 ---
+ ...rupts-during-firmware-crash-recovery.patch |  72 ---
+ ...-support-calibration-data-from-NVMEM.patch | 110 -----
  ...dd-basic-hwmon-temperature-reporting.patch | 380 ++++++++++++++++
  ...0-ath12k-prevent-ltssm-startup-crash.patch |   2 +-
  ...k-limit-WMI_SCAN_CHAN_LIST_CMDID-arg.patch |   8 +-
@@ -73,8 +76,10 @@ Subject: [PATCH 5/5] jidu6j11: v8 adjustments
  ...upport-DS1-exit-firmware-re-download.patch |  18 +-
  ...eroperating-DPP-and-other-encryption.patch |   4 +-
  ...mfmac-disable-dump_survey-on-bcm2835.patch |   6 +-
+ .../patches/build/006-crypto_aes.patch        |  61 ---
  .../100-backports-drop-QRTR-and-MHI.patch     |   6 +-
  .../patches/build/140-trace_backport.patch    |   2 +-
+ .../patches/build/150-sysfs-backport.patch    |  24 -
  .../210-wireless_netns_local_backport.patch   |   6 +-
  .../220-brcmfmac_usb_driver_backport.patch    |   2 +-
  ...x-init_vqs-build-error-on-kernel-6.6.patch |  30 ++
@@ -86,7 +91,9 @@ Subject: [PATCH 5/5] jidu6j11: v8 adjustments
  ...-freeze-for-60-seconds-caused-by-req.patch |  66 +++
  ...lace-one-element-arrays-with-flexibl.patch | 131 ++++++
  .../patches/rt2x00/100-rt2x00_options.patch   |  12 -
+ ...i-rt2800-add-support-for-eeprom-file.patch |  89 ----
  ...support-for-loading-EEPROM-from-user.patch | 225 ++++++++++
+ ...-wifi-rt2x00-add-eeprom-data-binding.patch |  63 ---
  ...-support-for-loading-EEPROM-from-MTD.patch | 107 +++++
  ...port-loading-eeprom-from-NVMEM-cells.patch |  81 ++++
  ...EEPROM-from-devicetree-embedded-data.patch |  76 ++++
@@ -104,6 +111,13 @@ Subject: [PATCH 5/5] jidu6j11: v8 adjustments
  ...t-support-for-external-LNA-on-MT7620.patch |  16 +-
  ...duce-accessors-for-CHIP_VER-register.patch |  21 +-
  ...-differentiate-based-on-SoC-CHIP_VER.patch |  37 +-
+ ...th-long-timeout-for-non-PCIE-devices.patch |  56 ---
+ ...op-unused-link-stats-handling-in-nl8.patch | 136 ------
+ ...d-helper-to-pack-station-level-STA_I.patch | 124 ------
+ ...factor-nl80211_dump_station-to-prepa.patch | 252 -----------
+ ...agment-per-link-station-stats-in-nl8.patch | 358 ---------------
+ ...pport-MAC-address-filtering-in-stati.patch | 113 -----
+ ...t-info-band-for-802.3-encap-offload-.patch |  49 --
  .../110-mac80211_keep_keys_on_stop_ap.patch   |   8 +-
  .../patches/subsys/130-disable_auto_vif.patch |   2 +-
  .../mac80211/patches/subsys/210-ap_scan.patch |   2 +-
@@ -124,32 +138,110 @@ Subject: [PATCH 5/5] jidu6j11: v8 adjustments
  ...d-eMLSR-eMLMR-action-frame-parsing-s.patch | 421 ++++++++++++++++++
  ...assoc_link_id-in-station-info-for-no.patch |  33 ++
  ...tify-driver-on-airtime-weight-change.patch |  14 +-
+ ...ip-default-WMM-setup-for-AP_VLAN-lin.patch |  27 --
+ ...x-station-lookup-for-management-fram.patch |  25 --
+ ...-reset-the-LED-state-when-ifup-fails.patch |  45 --
+ ...ect-the-link-a-management-frame-asks.patch |  69 ---
+ ...nsmit-the-4-address-null-frame-until.patch | 196 --------
+ ...e-link-address-as-TA-for-non-MLO-4-a.patch | 127 ------
+ ...e-the-AP-address-as-RA-for-a-4-addr-.patch |  38 --
+ ...sim-restore-MLD-addresses-before-rep.patch | 159 -------
+ ...-up-the-AP-station-by-the-AP-MLD-add.patch |  58 ---
+ ...ch-a-channel-switch-action-against-t.patch |  28 --
+ ...ort-the-BSSID-of-each-link-in-debugf.patch |  41 --
+ ...reserve-headroom-for-software-encryp.patch |  33 --
+ ...-of-a-data-frame-by-its-link-address.patch |  81 ----
+ ...eep-radar-detection-on-a-multi-radio.patch |  44 --
+ ...ort-the-combination-error-when-NAN-e.patch |  35 --
+ ...re-the-MLD-capabilities-of-a-station.patch |  52 ---
+ ...h-no-rate-at-the-peer-s-highest-rate.patch | 180 --------
+ ...tor-the-connection-of-an-MLO-station.patch |  24 -
+ ...d-deauth-from-any-link-of-the-AP-MLD.patch |  69 ---
+ ...-state-while-another-AP-link-beacons.patch |  50 ---
+ ...arrier-while-another-AP-link-beacons.patch |  65 ---
+ ...he-MBSSID-set-of-the-stopped-AP-link.patch | 156 -------
+ ...terface-limit-of-a-radio-a-parameter.patch |  37 --
+ ...ates-from-the-links-that-report-them.patch |  75 ----
+ ...address-and-link-of-a-dumped-station.patch |  75 ----
+ ...of-a-link-with-the-band-of-that-link.patch |  97 ----
+ ...nversion-of-a-TX-rate-to-a-rate-info.patch |  63 ---
+ ...s-counters-of-a-removed-station-link.patch | 197 --------
+ ...unters-and-rate-of-each-station-link.patch | 216 ---------
+ ...whose-rate-is-wider-than-the-channel.patch |  29 --
+ ...of-an-MLO-station-when-it-is-removed.patch |  72 ---
+ ...e-RX-link-of-each-station-on-its-own.patch | 157 -------
  target/linux/qualcommbe/image/ipq95xx.mk      |   5 +-
  .../ipq95xx/base-files/etc/board.d/02_network |   1 +
- 116 files changed, 3107 insertions(+), 359 deletions(-)
+ 162 files changed, 3107 insertions(+), 4543 deletions(-)
  create mode 100644 package/firmware/jidu6j11-board-data/Makefile
  create mode 100644 package/firmware/jidu6j11-board-data/files/board-2.IPQ9574.bin
  create mode 100644 package/firmware/jidu6j11-board-data/files/board-2.QCN9074.bin
+ delete mode 100644 package/kernel/mac80211/patches/ath11k/950-wifi-ath11k-implement-CE-interrupt-enable-disable-for-AHB.patch
+ delete mode 100644 package/kernel/mac80211/patches/ath11k/951-wifi-ath11k-disable-interrupts-during-firmware-crash-recovery.patch
+ delete mode 100644 package/kernel/mac80211/patches/ath11k/952-wifi-ath11k-support-calibration-data-from-NVMEM.patch
  create mode 100644 package/kernel/mac80211/patches/ath12k/001-v7.1-wifi-ath12k-add-basic-hwmon-temperature-reporting.patch
  create mode 100644 package/kernel/mac80211/patches/ath12k/200-Revert-wifi-ath12k-convert-tasklet-to-BH-workqueue-f.patch
  create mode 100644 package/kernel/mac80211/patches/ath9k/341-wifi-ath9k-obtain-system-gpios.patch
  create mode 100644 package/kernel/mac80211/patches/ath9k/600-wifi-ath9k-Clear-DMA-descriptors-without-memset.patch
  create mode 100644 package/kernel/mac80211/patches/ath9k/601-wifi-ath9k-remove-TX99-power-array-zero-init.patch
+ delete mode 100644 package/kernel/mac80211/patches/build/006-crypto_aes.patch
+ delete mode 100644 package/kernel/mac80211/patches/build/150-sysfs-backport.patch
  create mode 100644 package/kernel/mac80211/patches/build/230-fix-init_vqs-build-error-on-kernel-6.6.patch
  create mode 100644 package/kernel/mac80211/patches/build/240-realtek-rtw88-BH-workqueue.patch
  create mode 100644 package/kernel/mac80211/patches/build/500-fix_build_on_6_18.patch
  create mode 100644 package/kernel/mac80211/patches/mwl/110-wifi-mwifiex-fix-freeze-for-60-seconds-caused-by-req.patch
  create mode 100644 package/kernel/mac80211/patches/mwl/111-wifi-mwifiex-replace-one-element-arrays-with-flexibl.patch
+ delete mode 100644 package/kernel/mac80211/patches/rt2x00/602-01-wifi-rt2800-add-support-for-eeprom-file.patch
  create mode 100644 package/kernel/mac80211/patches/rt2x00/602-01-wifi-rt2x00-Add-support-for-loading-EEPROM-from-user.patch
+ delete mode 100644 package/kernel/mac80211/patches/rt2x00/602-02-wifi-rt2x00-add-eeprom-data-binding.patch
  create mode 100644 package/kernel/mac80211/patches/rt2x00/602-03-wifi-rt2x00-Add-support-for-loading-EEPROM-from-MTD.patch
  create mode 100644 package/kernel/mac80211/patches/rt2x00/602-05-wifi-rt2x00-support-loading-eeprom-from-NVMEM-cells.patch
  create mode 100644 package/kernel/mac80211/patches/rt2x00/603-wifi-rt2x00-Add-support-for-loading-EEPROM-from-devicetree-embedded-data.patch
+ delete mode 100644 package/kernel/mac80211/patches/rtl/001-wifi-rtw88-TX-report-with-long-timeout-for-non-PCIE-devices.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/001-wifi-cfg80211-Drop-unused-link-stats-handling-in-nl8.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/002-wifi-cfg80211-Add-helper-to-pack-station-level-STA_I.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/003-wifi-cfg80211-Refactor-nl80211_dump_station-to-prepa.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/004-wifi-cfg80211-Fragment-per-link-station-stats-in-nl8.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/005-wifi-cfg80211-support-MAC-address-filtering-in-stati.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/006-wifi-mac80211-set-info-band-for-802.3-encap-offload-.patch
  create mode 100644 package/kernel/mac80211/patches/subsys/350-mac80211-allow-scanning-while-on-radar-channel.patch
  create mode 100644 package/kernel/mac80211/patches/subsys/362-wifi-mac80211-improve-interface-iteration-ergonomics.patch
  create mode 100644 package/kernel/mac80211/patches/subsys/363-wifi-mac80211-improve-station-iteration-ergonomics.patch
  create mode 100644 package/kernel/mac80211/patches/subsys/370-wifi-mac80211-add-MLO-support-to-ieee80211_probe_cli.patch
  create mode 100644 package/kernel/mac80211/patches/subsys/371-wifi-mac80211-Add-eMLSR-eMLMR-action-frame-parsing-s.patch
  create mode 100644 package/kernel/mac80211/patches/subsys/380-mac80211-report-assoc_link_id-in-station-info-for-no.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/391-wifi-mac80211-skip-default-WMM-setup-for-AP_VLAN-lin.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/392-wifi-mac80211-fix-station-lookup-for-management-fram.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/393-wifi-mac80211-reset-the-LED-state-when-ifup-fails.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/394-wifi-mac80211-select-the-link-a-management-frame-asks.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/395-wifi-mac80211-retransmit-the-4-address-null-frame-until.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/396-wifi-mac80211-use-link-address-as-TA-for-non-MLO-4-a.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/397-wifi-mac80211-use-the-AP-address-as-RA-for-a-4-addr-.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/398-wifi-mac80211_hwsim-restore-MLD-addresses-before-rep.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/399-wifi-mac80211-look-up-the-AP-station-by-the-AP-MLD-add.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/400-wifi-mac80211-match-a-channel-switch-action-against-t.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/401-wifi-mac80211-report-the-BSSID-of-each-link-in-debugf.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/402-wifi-mac80211_hwsim-reserve-headroom-for-software-encryp.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/403-wifi-mac80211-find-the-sender-of-a-data-frame-by-its-link-address.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/404-wifi-mac80211_hwsim-keep-radar-detection-on-a-multi-radio.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/405-wifi-mac80211-report-the-combination-error-when-NAN-e.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/406-wifi-mac80211_hwsim-declare-the-MLD-capabilities-of-a-station.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/407-wifi-mac80211_hwsim-send-a-frame-with-no-rate-at-the-peer-s-highest-rate.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/408-wifi-mac80211_hwsim-let-mac80211-monitor-the-connection-of-an-MLO-station.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/409-wifi-mac80211-take-a-group-addressed-deauth-from-any-link-of-the-AP-MLD.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/410-wifi-cfg80211-keep-the-interface-state-while-another-AP-link-beacons.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/411-wifi-mac80211-keep-the-carrier-while-another-AP-link-beacons.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/412-wifi-mac80211-stop-only-the-MBSSID-set-of-the-stopped-AP-link.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/413-wifi-mac80211_hwsim-make-the-interface-limit-of-a-radio-a-parameter.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/414-wifi-cfg80211-take-the-MLO-station-rates-from-the-links-that-report-them.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/415-wifi-cfg80211-report-the-MLD-address-and-link-of-a-dumped-station.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/416-wifi-mac80211-convert-the-TX-rate-of-a-link-with-the-band-of-that-link.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/417-wifi-mac80211-export-the-conversion-of-a-TX-rate-to-a-rate-info.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/418-wifi-mac80211-keep-the-driver-s-counters-of-a-removed-station-link.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/419-wifi-mac80211_hwsim-report-the-TX-counters-and-rate-of-each-station-link.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/420-wifi-mac80211_hwsim-free-a-frame-whose-rate-is-wider-than-the-channel.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/421-wifi-mac80211-report-the-totals-of-an-MLO-station-when-it-is-removed.patch
+ delete mode 100644 package/kernel/mac80211/patches/subsys/422-wifi-mac80211-resolve-the-RX-link-of-each-station-on-its-own.patch
 
 diff --git a/package/firmware/ipq-wifi/Makefile b/package/firmware/ipq-wifi/Makefile
 index e050c748..011b9b36 100644
@@ -1648,6 +1740,263 @@ index 4d4a6f18..33f71d28 100644
   
   	header = mon_skb;
   
+diff --git a/package/kernel/mac80211/patches/ath11k/950-wifi-ath11k-implement-CE-interrupt-enable-disable-for-AHB.patch b/package/kernel/mac80211/patches/ath11k/950-wifi-ath11k-implement-CE-interrupt-enable-disable-for-AHB.patch
+deleted file mode 100644
+index 61fc21fc..00000000
+--- a/package/kernel/mac80211/patches/ath11k/950-wifi-ath11k-implement-CE-interrupt-enable-disable-for-AHB.patch
++++ /dev/null
+@@ -1,57 +0,0 @@
+-From a7ab5c835e4253b6577e4137367c05bfddd79fa2 Mon Sep 17 00:00:00 2001
+-From: Julius Bairaktaris <julius@bairaktaris.de>
+-Date: Mon, 27 Jul 2026 00:19:07 +0200
+-Subject: [PATCH] wifi: ath11k: implement CE interrupt enable/disable for AHB
+-
+-ath11k_core_reset() calls ath11k_hif_ce_irq_disable() right before it
+-powers the target down, but ath11k_ahb_hif_ops_ipq8074 never set the
+-ce_irq_enable/ce_irq_disable pair, and ath11k_hif_ce_irq_disable() does
+-nothing when the op is NULL. On AHB the copy engine interrupts and their
+-tasklets therefore stay live across rproc_shutdown(), where the register
+-space they touch is no longer accessible.
+-
+-Wire the ops up. The sequence is the one ath11k_ahb_stop() already runs,
+-factored into a helper and reused, so behaviour on the stop path is
+-unchanged. wcn6750 is not affected: it uses the pcic ops, which
+-implement the pair already.
+-
+-Assisted-by: Claude:claude-opus-5
+-Signed-off-by: Julius Bairaktaris <julius@bairaktaris.de>
+-Reviewed-by: Rameshkumar Sundaram <rameshkumar.sundaram@oss.qualcomm.com>
+-Reviewed-by: Baochen Qiang <baochen.qiang@oss.qualcomm.com>
+-Link: https://patch.msgid.link/20260726221908.104873-2-julius@bairaktaris.de
+-Signed-off-by: Jeff Johnson <jeff.johnson@oss.qualcomm.com>
+----
+- drivers/net/wireless/ath/ath11k/ahb.c | 9 ++++++++-
+- 1 file changed, 8 insertions(+), 1 deletion(-)
+-
+---- a/drivers/net/wireless/ath/ath11k/ahb.c
+-+++ b/drivers/net/wireless/ath/ath11k/ahb.c
+-@@ -400,12 +400,17 @@ static void ath11k_ahb_ext_irq_disable(s
+- 	ath11k_ahb_sync_ext_irqs(ab);
+- }
+- 
+--static void ath11k_ahb_stop(struct ath11k_base *ab)
+-+static void ath11k_ahb_ce_irq_disable_sync(struct ath11k_base *ab)
+- {
+- 	if (!test_bit(ATH11K_FLAG_CRASH_FLUSH, &ab->dev_flags))
+- 		ath11k_ahb_ce_irqs_disable(ab);
+- 	ath11k_ahb_sync_ce_irqs(ab);
+- 	ath11k_ahb_kill_tasklets(ab);
+-+}
+-+
+-+static void ath11k_ahb_stop(struct ath11k_base *ab)
+-+{
+-+	ath11k_ahb_ce_irq_disable_sync(ab);
+- 	timer_delete_sync(&ab->rx_replenish_retry);
+- 	ath11k_ce_cleanup_pipes(ab);
+- }
+-@@ -795,6 +800,8 @@ static const struct ath11k_hif_ops ath11
+- 	.map_service_to_pipe = ath11k_ahb_map_service_to_pipe,
+- 	.power_down = ath11k_ahb_power_down,
+- 	.power_up = ath11k_ahb_power_up,
+-+	.ce_irq_enable = ath11k_ahb_ce_irqs_enable,
+-+	.ce_irq_disable = ath11k_ahb_ce_irq_disable_sync,
+- };
+- 
+- static const struct ath11k_hif_ops ath11k_ahb_hif_ops_wcn6750 = {
+diff --git a/package/kernel/mac80211/patches/ath11k/951-wifi-ath11k-disable-interrupts-during-firmware-crash-recovery.patch b/package/kernel/mac80211/patches/ath11k/951-wifi-ath11k-disable-interrupts-during-firmware-crash-recovery.patch
+deleted file mode 100644
+index 996ce9b5..00000000
+--- a/package/kernel/mac80211/patches/ath11k/951-wifi-ath11k-disable-interrupts-during-firmware-crash-recovery.patch
++++ /dev/null
+@@ -1,72 +0,0 @@
+-From f7a74e131d3f0de04335dbe278bfb82bdafcdb3e Mon Sep 17 00:00:00 2001
+-From: Julius Bairaktaris <julius@bairaktaris.de>
+-Date: Mon, 27 Jul 2026 00:19:08 +0200
+-Subject: [PATCH] wifi: ath11k: disable interrupts during firmware crash recovery
+-
+-On IPQ8074 a firmware assert reboots the SoC:
+-
+-  Unable to handle kernel read from unreadable memory at virtual address 0
+-  pc : ath11k_hal_srng_access_begin+0xc/0x60 [ath11k]
+-  lr : ath11k_dp_rx_process_mon_status+0x15c/0xd84 [ath11k]
+-  Call trace:
+-   ath11k_hal_srng_access_begin+0xc/0x60 [ath11k]
+-   ath11k_dp_rx_process_mon_rings+0xa0/0x5d4 [ath11k]
+-   ath11k_dp_service_srng+0x1f4/0x348 [ath11k]
+-   ath11k_ahb_ext_grp_napi_poll+0x34/0xd4 [ath11k_ahb]
+-   __napi_poll+0x38/0x188
+-   net_rx_action+0x120/0x2c0
+-
+-ath11k_core_reconfigure_on_crash() tears the data path down with
+-ath11k_dp_pdev_free(), ath11k_dp_free() and ath11k_hal_srng_clear(),
+-which memsets the ring list. The DP NAPI is still running while that
+-happens, so it services a ring whose address pointer has just been
+-cleared.
+-
+-That function used to disable the interrupts first, until
+-commit d455e805de70 ("wifi: ath11k: rearrange IRQ enable/disable in reset path")
+-moved the disable into ath11k_core_reset(). reset_work is only queued
+-from mhi.c and from the debugfs hw-restart handler, so AHB parts never
+-run it on a real firmware crash. Their recovery goes QMI server exit ->
+-restart_work -> ath11k_core_reconfigure_on_crash() ->
+-ath11k_core_qmi_firmware_ready(), and nothing disables the interrupts
+-anywhere along it.
+-
+-Disable them again on the crash path. The reset path has already done
+-so by the time it gets here, hence the ab->is_reset check.
+-
+-This is also why the debugfs hw-restart trigger never showed the
+-problem: it goes through ath11k_core_reset(), the one path that still
+-had the disable.
+-
+-Tested-on: IPQ8074 hw2.0 AHB WLAN.HK.2.12-01460-QCAHKSWPL_SILICONZ-1
+-
+-Fixes: d455e805de70 ("wifi: ath11k: rearrange IRQ enable/disable in reset path")
+-Assisted-by: Claude:claude-opus-5
+-Signed-off-by: Julius Bairaktaris <julius@bairaktaris.de>
+-Reviewed-by: Rameshkumar Sundaram <rameshkumar.sundaram@oss.qualcomm.com>
+-Reviewed-by: Baochen Qiang <baochen.qiang@oss.qualcomm.com>
+-Link: https://patch.msgid.link/20260726221908.104873-3-julius@bairaktaris.de
+-Signed-off-by: Jeff Johnson <jeff.johnson@oss.qualcomm.com>
+----
+- drivers/net/wireless/ath/ath11k/core.c | 10 ++++++++++
+- 1 file changed, 10 insertions(+)
+-
+---- a/drivers/net/wireless/ath/ath11k/core.c
+-+++ b/drivers/net/wireless/ath/ath11k/core.c
+-@@ -2394,6 +2394,16 @@ static int ath11k_core_reconfigure_on_cr
+- 
+- 	mutex_lock(&ab->core_lock);
+- 	ath11k_thermal_unregister(ab);
+-+
+-+	/*
+-+	 * ath11k_core_reset() already disabled the interrupts on the reset
+-+	 * path; only the firmware crash path reaches here with them live.
+-+	 */
+-+	if (!ab->is_reset) {
+-+		ath11k_hif_irq_disable(ab);
+-+		ath11k_hif_ce_irq_disable(ab);
+-+	}
+-+
+- 	ath11k_dp_pdev_free(ab);
+- 	ath11k_cfr_deinit(ab);
+- 	ath11k_spectral_deinit(ab);
+diff --git a/package/kernel/mac80211/patches/ath11k/952-wifi-ath11k-support-calibration-data-from-NVMEM.patch b/package/kernel/mac80211/patches/ath11k/952-wifi-ath11k-support-calibration-data-from-NVMEM.patch
+deleted file mode 100644
+index 48fc568b..00000000
+--- a/package/kernel/mac80211/patches/ath11k/952-wifi-ath11k-support-calibration-data-from-NVMEM.patch
++++ /dev/null
+@@ -1,110 +0,0 @@
+-From: Robert Marko <robimarko@gmail.com>
+-Date: Tue, 22 Sep 2026 12:00:00 +0200
+-Subject: [PATCH] wifi: ath11k: support calibration data from NVMEM
+-
+-Allow ath11k devices to supply calibration data through a Device Tree
+-NVMEM cell named "calibration". This mirrors ath10k's calibration cell
+-support and lets boards use the in-flash calibration data directly,
+-without creating a firmware file in userspace.
+-
+-The NVMEM cell is preferred to the existing per-device and generic
+-calibration files. If it is absent (or cannot be read), retain the
+-existing fallback behaviour.
+-
+-Signed-off-by: Robert Marko <robimarko@gmail.com>
+----
+- drivers/net/wireless/ath/ath11k/qmi.c | 49 +++++++++++++++++++++++++++++++--
+- 1 file changed, 46 insertions(+), 3 deletions(-)
+-
+---- a/drivers/net/wireless/ath/ath11k/qmi.c
+-+++ b/drivers/net/wireless/ath/ath11k/qmi.c
+-@@ -15,6 +15,7 @@
+- #include <linux/of_reserved_mem.h>
+- #include <linux/ioport.h>
+- #include <linux/firmware.h>
+-+#include <linux/nvmem-consumer.h>
+- #include <linux/of_irq.h>
+- 
+- #define SLEEP_CLOCK_SELECT_INTERNAL_BIT	0x02
+-@@ -2431,14 +2432,44 @@ err_free_req:
+- 	return ret;
+- }
+- 
+-+static int ath11k_qmi_get_caldata_nvmem(struct ath11k_base *ab,
+-+					 void **data, u32 *len)
+-+{
+-+	struct nvmem_cell *cell;
+-+	size_t cell_len;
+-+	void *buf;
+-+
+-+	cell = devm_nvmem_cell_get(ab->dev, "calibration");
+-+	if (IS_ERR(cell))
+-+		return PTR_ERR(cell);
+-+
+-+	buf = nvmem_cell_read(cell, &cell_len);
+-+	if (IS_ERR(buf))
+-+		return PTR_ERR(buf);
+-+
+-+	if (cell_len > ab->hw_params.fw.board_size) {
+-+		ath11k_warn(ab,
+-+			    "invalid calibration data length in nvmem-cell 'calibration': %zu > %zu\n",
+-+			    cell_len, ab->hw_params.fw.board_size);
+-+		kfree(buf);
+-+		return -EMSGSIZE;
+-+	}
+-+
+-+	*data = buf;
+-+	*len = cell_len;
+-+
+-+	return 0;
+-+}
+-+
+- static int ath11k_qmi_load_bdf_qmi(struct ath11k_base *ab,
+- 				   bool regdb)
+- {
+- 	struct device *dev = ab->dev;
+- 	char filename[ATH11K_QMI_MAX_BDF_FILE_NAME_SIZE];
+--	const struct firmware *fw_entry;
+- 	struct ath11k_board_data bd;
+- 	u32 fw_size, file_type;
+-+	const struct firmware *fw_entry = NULL;
+-+	void *caldata = NULL;
+- 	int ret = 0, bdf_type;
+- 	const u8 *tmp;
+- 
+-@@ -2482,6 +2513,15 @@ static int ath11k_qmi_load_bdf_qmi(struc
+- 		fw_size = ATH11K_QMI_MAX_BDF_FILE_NAME_SIZE;
+- 	} else {
+- 		file_type = ATH11K_QMI_FILE_TYPE_CALDATA;
+-+		ret = ath11k_qmi_get_caldata_nvmem(ab, &caldata, &fw_size);
+-+		if (!ret) {
+-+			tmp = caldata;
+-+			goto load_caldata;
+-+		}
+-+
+-+		ath11k_dbg(ab, ATH11K_DBG_QMI,
+-+			   "failed to load calibration data from nvmem-cell: %d, try file next\n",
+-+			   ret);
+- 
+- 		/* cal-<bus>-<id>.bin */
+- 		snprintf(filename, sizeof(filename), "cal-%s-%s.bin",
+-@@ -2511,6 +2551,7 @@ success:
+- 		tmp = fw_entry->data;
+- 	}
+- 
+-+load_caldata:
+- 	ret = ath11k_qmi_load_file_target_mem(ab, tmp, fw_size, file_type);
+- 	if (ret < 0) {
+- 		ath11k_warn(ab, "qmi failed to load caldata\n");
+-@@ -2520,9 +2561,10 @@ success:
+- 	ath11k_dbg(ab, ATH11K_DBG_QMI, "caldata type: %u\n", file_type);
+- 
+- out_qmi_cal:
+--	if (!ab->qmi.target.eeprom_caldata)
+-+	if (fw_entry)
+- 		release_firmware(fw_entry);
+- out:
+-+	kfree(caldata);
+- 	ath11k_core_free_bdf(ab, &bd);
+- 	ath11k_dbg(ab, ATH11K_DBG_QMI, "BDF download sequence completed\n");
+- 
 diff --git a/package/kernel/mac80211/patches/ath12k/001-v7.1-wifi-ath12k-add-basic-hwmon-temperature-reporting.patch b/package/kernel/mac80211/patches/ath12k/001-v7.1-wifi-ath12k-add-basic-hwmon-temperature-reporting.patch
 new file mode 100644
 index 00000000..022e3327
@@ -3130,6 +3479,73 @@ index a146ad23..e2c1eb8e 100644
   	if (brcmf_feat_is_enabled(ifp, BRCMF_FEAT_WOWL_GTK))
   		ops->set_rekey_data = brcmf_cfg80211_set_rekey_data;
   #endif
+diff --git a/package/kernel/mac80211/patches/build/006-crypto_aes.patch b/package/kernel/mac80211/patches/build/006-crypto_aes.patch
+deleted file mode 100644
+index fbc515a2..00000000
+--- a/package/kernel/mac80211/patches/build/006-crypto_aes.patch
++++ /dev/null
+@@ -1,61 +0,0 @@
+---- a/compat/lib-crypto-aes.c
+-+++ b/compat/lib-crypto-aes.c
+-@@ -515,7 +515,7 @@ void aes_decrypt(const struct aes_key *k
+- }
+- EXPORT_SYMBOL(aes_decrypt);
+- 
+--#if IS_ENABLED(CONFIG_CRYPTO_LIB_AES_CBC_MACS)
+-+#if IS_ENABLED(CPTCFG_BACKPORTED_BPAUTO_CRYPTO_LIB_AES_CBC_MACS)
+- 
+- #ifndef aes_cbcmac_blocks_arch
+- static bool aes_cbcmac_blocks_arch(u8 h[AES_BLOCK_SIZE],
+-@@ -710,49 +710,8 @@ void aes_cbcmac_final(struct aes_cbcmac_
+- }
+- EXPORT_SYMBOL_NS_GPL(aes_cbcmac_final, "CRYPTO_INTERNAL");
+- 
+--/*
+-- * FIPS cryptographic algorithm self-test for AES-CMAC.  As per the FIPS 140-3
+-- * Implementation Guidance, a cryptographic algorithm self-test for at least one
+-- * of AES-GCM, AES-CCM, AES-CMAC, or AES-GMAC is required if any of those modes
+-- * is implemented.  This fulfills that requirement via AES-CMAC.
+-- *
+-- * This is just for FIPS.  The full tests are in the KUnit test suite.
+-- */
+--static void __init aes_cmac_fips_test(void)
+--{
+--	struct aes_cmac_key key;
+--	u8 mac[AES_BLOCK_SIZE];
+--
+--	if (aes_cmac_preparekey(&key, fips_test_key, sizeof(fips_test_key)) !=
+--	    0)
+--		panic("aes: CMAC FIPS self-test failed (preparekey)\n");
+--	aes_cmac(&key, fips_test_data, sizeof(fips_test_data), mac);
+--	if (memcmp(fips_test_aes_cmac_value, mac, sizeof(mac)) != 0)
+--		panic("aes: CMAC FIPS self-test failed (wrong MAC)\n");
+--	memzero_explicit(&key, sizeof(key));
+--}
+--#else /* CONFIG_CRYPTO_LIB_AES_CBC_MACS */
+--static inline void aes_cmac_fips_test(void)
+--{
+--}
+- #endif /* !CONFIG_CRYPTO_LIB_AES_CBC_MACS */
+- 
+--static int __init aes_mod_init(void)
+--{
+--#ifdef aes_mod_init_arch
+--	aes_mod_init_arch();
+--#endif
+--	if (fips_enabled)
+--		aes_cmac_fips_test();
+--	return 0;
+--}
+--subsys_initcall(aes_mod_init);
+--
+--static void __exit aes_mod_exit(void)
+--{
+--}
+--module_exit(aes_mod_exit);
+--
+- MODULE_DESCRIPTION("AES block cipher");
+- MODULE_AUTHOR("Ard Biesheuvel <ard.biesheuvel@linaro.org>");
+- MODULE_AUTHOR("Eric Biggers <ebiggers@kernel.org>");
 diff --git a/package/kernel/mac80211/patches/build/100-backports-drop-QRTR-and-MHI.patch b/package/kernel/mac80211/patches/build/100-backports-drop-QRTR-and-MHI.patch
 index ce291262..c9cac828 100644
 --- a/package/kernel/mac80211/patches/build/100-backports-drop-QRTR-and-MHI.patch
@@ -3174,6 +3590,36 @@ index 7ca0c819..6de40cd6 100644
   	),
   	TP_fast_assign(
   		WIPHY_ASSIGN;
+diff --git a/package/kernel/mac80211/patches/build/150-sysfs-backport.patch b/package/kernel/mac80211/patches/build/150-sysfs-backport.patch
+deleted file mode 100644
+index 877040f6..00000000
+--- a/package/kernel/mac80211/patches/build/150-sysfs-backport.patch
++++ /dev/null
+@@ -1,24 +0,0 @@
+---- a/net/wireless/sysfs.c
+-+++ b/net/wireless/sysfs.c
+-@@ -160,12 +160,21 @@ static SIMPLE_DEV_PM_OPS(wiphy_pm_ops, w
+- #define WIPHY_PM_OPS NULL
+- #endif
+- 
+-+#if LINUX_VERSION_IS_GEQ(7,0,0)
+- static const struct ns_common *wiphy_namespace(const struct device *d)
+- {
+- 	struct wiphy *wiphy = container_of(d, struct wiphy, dev);
+- 
+- 	return to_ns_common(wiphy_net(wiphy));
+- }
+-+#else
+-+static const void *wiphy_namespace(const struct device *d)
+-+{
+-+	struct wiphy *wiphy = container_of(d, struct wiphy, dev);
+-+
+-+	return wiphy_net(wiphy);
+-+}
+-+#endif
+- 
+- struct class ieee80211_class = {
+- 	.name = "ieee80211",
 diff --git a/package/kernel/mac80211/patches/build/210-wireless_netns_local_backport.patch b/package/kernel/mac80211/patches/build/210-wireless_netns_local_backport.patch
 index 30d46d0f..22242210 100644
 --- a/package/kernel/mac80211/patches/build/210-wireless_netns_local_backport.patch
@@ -3614,6 +4060,101 @@ index f0978020..9f5002da 100644
  --- a/drivers/net/wireless/ralink/rt2x00/Kconfig
  +++ b/drivers/net/wireless/ralink/rt2x00/Kconfig
  @@ -223,33 +223,33 @@ config RT2800SOC
+diff --git a/package/kernel/mac80211/patches/rt2x00/602-01-wifi-rt2800-add-support-for-eeprom-file.patch b/package/kernel/mac80211/patches/rt2x00/602-01-wifi-rt2800-add-support-for-eeprom-file.patch
+deleted file mode 100644
+index 32fb1e9c..00000000
+--- a/package/kernel/mac80211/patches/rt2x00/602-01-wifi-rt2800-add-support-for-eeprom-file.patch
++++ /dev/null
+@@ -1,89 +0,0 @@
+-From bf44cb5fb0f510b89e7a651e650dbf71062441d9 Mon Sep 17 00:00:00 2001
+-From: Rosen Penev <rosenp@gmail.com>
+-Date: Wed, 18 Feb 2026 16:17:47 -0800
+-Subject: [PATCH] wifi: rt2800: add support for eeprom file
+-
+-Allows loading through ralink,eeprom.
+-
+-Signed-off-by: Rosen Penev <rosenp@gmail.com>
+----
+---- a/drivers/net/wireless/ralink/rt2x00/rt2800lib.c
+-+++ b/drivers/net/wireless/ralink/rt2x00/rt2800lib.c
+-@@ -25,6 +25,7 @@
+- #include <linux/kernel.h>
+- #include <linux/module.h>
+- #include <linux/nvmem-consumer.h>
+-+#include <linux/property.h>
+- #include <linux/slab.h>
+- 
+- #include "rt2x00.h"
+-@@ -10963,6 +10964,47 @@ int rt2800_read_eeprom_efuse(struct rt2x
+- }
+- EXPORT_SYMBOL_GPL(rt2800_read_eeprom_efuse);
+- 
+-+int rt2800_read_eeprom_file(struct rt2x00_dev *rt2x00dev)
+-+{
+-+	struct device *dev = rt2x00dev->dev;
+-+	const struct firmware *ee;
+-+	const char *ee_name;
+-+	int retval;
+-+
+-+	if (device_property_read_string(dev, "ralink,eeprom", &ee_name))  {
+-+		rt2x00_err(rt2x00dev, "Required EEPROM name is missing.");
+-+		return -EINVAL;
+-+	}
+-+
+-+	rt2x00_info(rt2x00dev, "Loading EEPROM data from '%s'.\n", ee_name);
+-+
+-+	retval = request_firmware(&ee, ee_name, rt2x00dev->dev);
+-+	if (retval) {
+-+		rt2x00_err(rt2x00dev, "Failed to request EEPROM.\n");
+-+		return retval;
+-+	}
+-+
+-+	if (!ee || !ee->size || !ee->data) {
+-+		rt2x00_err(rt2x00dev, "Failed to read EEPROM file.\n");
+-+		return -ENOENT;
+-+	}
+-+
+-+	if (ee->size != rt2x00dev->ops->eeprom_size) {
+-+		rt2x00_err(rt2x00dev,
+-+			"EEPROM file size is invalid, it should be %d bytes\n",
+-+			rt2x00dev->ops->eeprom_size);
+-+		retval = -EINVAL;
+-+		goto err_release_ee;
+-+	}
+-+
+-+	memcpy(rt2x00dev->eeprom, ee->data, rt2x00dev->ops->eeprom_size);
+-+
+-+err_release_ee:
+-+	release_firmware(ee);
+-+	return retval;
+-+}
+-+EXPORT_SYMBOL_GPL(rt2800_read_eeprom_file);
+-+
+- int rt2800_read_eeprom_nvmem(struct rt2x00_dev *rt2x00dev)
+- {
+- 	struct device *dev = rt2x00dev->dev;
+---- a/drivers/net/wireless/ralink/rt2x00/rt2800lib.h
+-+++ b/drivers/net/wireless/ralink/rt2x00/rt2800lib.h
+-@@ -248,6 +248,7 @@ void rt2800_disable_radio(struct rt2x00_
+- int rt2800_efuse_detect(struct rt2x00_dev *rt2x00dev);
+- int rt2800_read_eeprom_efuse(struct rt2x00_dev *rt2x00dev);
+- 
+-+int rt2800_read_eeprom_file(struct rt2x00_dev *rt2x00dev);
+- int rt2800_read_eeprom_nvmem(struct rt2x00_dev *rt2x00dev);
+- 
+- int rt2800_probe_hw(struct rt2x00_dev *rt2x00dev);
+---- a/drivers/net/wireless/ralink/rt2x00/rt2800soc.c
+-+++ b/drivers/net/wireless/ralink/rt2x00/rt2800soc.c
+-@@ -97,6 +97,9 @@ static int rt2800soc_read_eeprom(struct
+- 	if (!rt2800_read_eeprom_nvmem(rt2x00dev))
+- 		return 0;
+- 
+-+	if (!rt2800_read_eeprom_file(rt2x00dev))
+-+		return 0;
+-+
+- 	base_addr = ioremap(0x1F040000, EEPROM_SIZE);
+- 	if (!base_addr)
+- 		return -ENOMEM;
 diff --git a/package/kernel/mac80211/patches/rt2x00/602-01-wifi-rt2x00-Add-support-for-loading-EEPROM-from-user.patch b/package/kernel/mac80211/patches/rt2x00/602-01-wifi-rt2x00-Add-support-for-loading-EEPROM-from-user.patch
 new file mode 100644
 index 00000000..ac9e2060
@@ -3845,6 +4386,75 @@ index 00000000..ac9e2060
 + 	if (rt2800pci_efuse_detect(rt2x00dev))
 + 		retval = rt2800pci_read_eeprom_efuse(rt2x00dev);
 + 	else
+diff --git a/package/kernel/mac80211/patches/rt2x00/602-02-wifi-rt2x00-add-eeprom-data-binding.patch b/package/kernel/mac80211/patches/rt2x00/602-02-wifi-rt2x00-add-eeprom-data-binding.patch
+deleted file mode 100644
+index 984deee6..00000000
+--- a/package/kernel/mac80211/patches/rt2x00/602-02-wifi-rt2x00-add-eeprom-data-binding.patch
++++ /dev/null
+@@ -1,63 +0,0 @@
+-From bf44cb5fb0f510b89e7a651e650dbf71062441d9 Mon Sep 17 00:00:00 2001
+-From: Rosen Penev <rosenp@gmail.com>
+-Date: Wed, 18 Feb 2026 21:23:23 -0800
+-Subject: [PATCH] wifi: rt2x00: add eeprom-data binding
+-
+-Useful for embedding eeprom data in dts instead of relying on an
+-external file.
+-
+-Signed-off-by: Rosen Penev <rosenp@gmail.com>
+----
+---- a/drivers/net/wireless/ralink/rt2x00/rt2800lib.c
+-+++ b/drivers/net/wireless/ralink/rt2x00/rt2800lib.c
+-@@ -10953,6 +10953,16 @@ static void rt2800_efuse_read(struct rt2
+- 	mutex_unlock(&rt2x00dev->csr_mutex);
+- }
+- 
+-+int rt2800_read_eeprom_data(struct rt2x00_dev *rt2x00dev)
+-+{
+-+	size_t len = rt2x00dev->ops->eeprom_size / sizeof(u16);
+-+	struct device *dev = rt2x00dev->dev;
+-+
+-+	return device_property_read_u16_array(dev, "ralink,eeprom-data",
+-+			rt2x00dev->eeprom, len);
+-+}
+-+EXPORT_SYMBOL_GPL(rt2800_read_eeprom_data);
+-+
+- int rt2800_read_eeprom_efuse(struct rt2x00_dev *rt2x00dev)
+- {
+- 	unsigned int i;
+---- a/drivers/net/wireless/ralink/rt2x00/rt2800lib.h
+-+++ b/drivers/net/wireless/ralink/rt2x00/rt2800lib.h
+-@@ -248,6 +248,7 @@ void rt2800_disable_radio(struct rt2x00_
+- int rt2800_efuse_detect(struct rt2x00_dev *rt2x00dev);
+- int rt2800_read_eeprom_efuse(struct rt2x00_dev *rt2x00dev);
+- 
+-+int rt2800_read_eeprom_data(struct rt2x00_dev *rt2x00dev);
+- int rt2800_read_eeprom_file(struct rt2x00_dev *rt2x00dev);
+- int rt2800_read_eeprom_nvmem(struct rt2x00_dev *rt2x00dev);
+- 
+---- a/drivers/net/wireless/ralink/rt2x00/rt2800pci.c
+-+++ b/drivers/net/wireless/ralink/rt2x00/rt2800pci.c
+-@@ -281,6 +281,9 @@ static int rt2800pci_read_eeprom(struct
+- 	if (!rt2800_read_eeprom_nvmem(rt2x00dev))
+- 		return 0;
+- 
+-+	if (!rt2800_read_eeprom_data(rt2x00dev))
+-+		return 0;
+-+
+- 	if (rt2800pci_efuse_detect(rt2x00dev))
+- 		retval = rt2800pci_read_eeprom_efuse(rt2x00dev);
+- 	else
+---- a/drivers/net/wireless/ralink/rt2x00/rt2800soc.c
+-+++ b/drivers/net/wireless/ralink/rt2x00/rt2800soc.c
+-@@ -100,6 +100,9 @@ static int rt2800soc_read_eeprom(struct
+- 	if (!rt2800_read_eeprom_file(rt2x00dev))
+- 		return 0;
+- 
+-+	if (!rt2800_read_eeprom_data(rt2x00dev))
+-+		return 0;
+-+
+- 	base_addr = ioremap(0x1F040000, EEPROM_SIZE);
+- 	if (!base_addr)
+- 		return -ENOMEM;
 diff --git a/package/kernel/mac80211/patches/rt2x00/602-03-wifi-rt2x00-Add-support-for-loading-EEPROM-from-MTD.patch b/package/kernel/mac80211/patches/rt2x00/602-03-wifi-rt2x00-Add-support-for-loading-EEPROM-from-MTD.patch
 new file mode 100644
 index 00000000..9b64e9c8
@@ -4782,6 +5392,1136 @@ index 11d845b9..0b2e7313 100644
   	rt2800_rfcsr_write_dccal(rt2x00dev, 62, 0x00);
   	rt2800_rfcsr_write_dccal(rt2x00dev, 63, 0x00);
   
+diff --git a/package/kernel/mac80211/patches/rtl/001-wifi-rtw88-TX-report-with-long-timeout-for-non-PCIE-devices.patch b/package/kernel/mac80211/patches/rtl/001-wifi-rtw88-TX-report-with-long-timeout-for-non-PCIE-devices.patch
+deleted file mode 100644
+index eb9f5fcb..00000000
+--- a/package/kernel/mac80211/patches/rtl/001-wifi-rtw88-TX-report-with-long-timeout-for-non-PCIE-devices.patch
++++ /dev/null
+@@ -1,56 +0,0 @@
+-From bbd4f8e9217162a79cd0b016b646b3afcbbf7629 Mon Sep 17 00:00:00 2001
+-From: Ping-Ke Shih <pkshih@realtek.com>
+-Date: Thu, 24 Sep 2026 08:46:37 +0800
+-Subject: [PATCH] wifi: rtw88: TX report with long timeout for non-PCIE devices
+-
+-Many USB and SDIO devices can't report TX status within 500 ms, and
+-extending to 2500 ms as tested USB/SDIO devices can fix the problem [1].
+-To avoid adding chip ID one by one, and this change looks harmless.
+-Keep PCIE using short timeout, and others use long timeout.
+-
+-[1] https://lore.kernel.org/linux-wireless/20260921165343.8131-1-pepe.schlehofer@gmail.com/
+-
+-Signed-off-by: Ping-Ke Shih <pkshih@realtek.com>
+-Link: https://lore.kernel.org/linux-wireless/20260924004637.9958-1-pkshih@realtek.com/
+----
+- drivers/net/wireless/realtek/rtw88/tx.c | 9 +++++----
+- drivers/net/wireless/realtek/rtw88/tx.h | 3 ++-
+- 2 files changed, 7 insertions(+), 5 deletions(-)
+-
+---- a/drivers/net/wireless/realtek/rtw88/tx.c
+-+++ b/drivers/net/wireless/realtek/rtw88/tx.c
+-@@ -196,7 +196,7 @@ void rtw_tx_report_purge_timer(struct ti
+- void rtw_tx_report_enqueue(struct rtw_dev *rtwdev, struct sk_buff *skb, u8 sn)
+- {
+- 	struct rtw_tx_report *tx_report = &rtwdev->tx_report;
+--	unsigned long timeout = RTW_TX_PROBE_TIMEOUT;
+-+	unsigned long timeout;
+- 	unsigned long flags;
+- 	u8 *drv_data;
+- 
+-@@ -208,9 +208,10 @@ void rtw_tx_report_enqueue(struct rtw_de
+- 	__skb_queue_tail(&tx_report->queue, skb);
+- 	spin_unlock_irqrestore(&tx_report->q_lock, flags);
+- 
+--	if (rtwdev->chip->id == RTW_CHIP_TYPE_8723D &&
+--	    rtwdev->hci.type == RTW_HCI_TYPE_USB)
+--		timeout = msecs_to_jiffies(2500);
+-+	if (rtwdev->hci.type == RTW_HCI_TYPE_PCIE)
+-+		timeout = RTW_TX_PROBE_TIMEOUT_SHORT;
+-+	else
+-+		timeout = RTW_TX_PROBE_TIMEOUT_LONG;
+- 
+- 	mod_timer(&tx_report->purge_timer, jiffies + timeout);
+- }
+---- a/drivers/net/wireless/realtek/rtw88/tx.h
+-+++ b/drivers/net/wireless/realtek/rtw88/tx.h
+-@@ -7,7 +7,8 @@
+- 
+- #define RTK_TX_MAX_AGG_NUM_MASK		0x1f
+- 
+--#define RTW_TX_PROBE_TIMEOUT		msecs_to_jiffies(500)
+-+#define RTW_TX_PROBE_TIMEOUT_SHORT	msecs_to_jiffies(500)
+-+#define RTW_TX_PROBE_TIMEOUT_LONG	msecs_to_jiffies(2500)
+- 
+- struct rtw_tx_desc {
+- 	__le32 w0;
+diff --git a/package/kernel/mac80211/patches/subsys/001-wifi-cfg80211-Drop-unused-link-stats-handling-in-nl8.patch b/package/kernel/mac80211/patches/subsys/001-wifi-cfg80211-Drop-unused-link-stats-handling-in-nl8.patch
+deleted file mode 100644
+index 0af15814..00000000
+--- a/package/kernel/mac80211/patches/subsys/001-wifi-cfg80211-Drop-unused-link-stats-handling-in-nl8.patch
++++ /dev/null
+@@ -1,136 +0,0 @@
+-From 5c660b243435d74d17a6721cd90e9d188b231cc8 Mon Sep 17 00:00:00 2001
+-From: P Praneesh <praneesh.p@oss.qualcomm.com>
+-Date: Sun, 14 Jun 2026 10:47:31 +0530
+-Subject: [PATCH 1/5] wifi: cfg80211: Drop unused link stats handling in
+- nl80211_send_station()
+-
+-Remove the link level statistics handling from
+-nl80211_send_station() and drop the unused link_stats parameter
+-from its signature and callers. The removed code iterated over
+-each MLO link and attempted to send link specific station data
+-through NL80211_ATTR_MLO_LINKS, but this logic was never used
+-because link_stats was always false.
+-
+-This logic was introduced during early work on link level station
+-statistics with the intention of reporting information for each
+-link. Due to message size concerns when a station has multiple
+-links, the feature was disabled behind the link_stats flag and
+-remained unused.
+-
+-The link level reporting block in nl80211_send_station() is dead
+-code and cannot support larger messages, so remove it. This
+-cleanup also prepares for proper link level statistics reporting
+-in nl80211_dump_station() in a later patch, where fragmentation
+-allows safe transmission of multi link data.
+-
+-Also fix label indentation: the nla_put_failure label had an
+-erroneous leading space.
+-
+-Signed-off-by: P Praneesh <praneesh.p@oss.qualcomm.com>
+-Link: https://patch.msgid.link/20260614051739.3979947-2-praneesh.p@oss.qualcomm.com
+-Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+----
+- net/wireless/nl80211.c | 50 +++++-------------------------------------
+- 1 file changed, 6 insertions(+), 44 deletions(-)
+-
+---- a/net/wireless/nl80211.c
+-+++ b/net/wireless/nl80211.c
+-@@ -8045,14 +8045,10 @@ static int nl80211_send_station(struct s
+- 				u32 seq, int flags,
+- 				struct cfg80211_registered_device *rdev,
+- 				struct wireless_dev *wdev,
+--				const u8 *mac_addr, struct station_info *sinfo,
+--				bool link_stats)
+-+				const u8 *mac_addr, struct station_info *sinfo)
+- {
+- 	void *hdr;
+- 	struct nlattr *sinfoattr, *bss_param;
+--	struct link_station_info *link_sinfo;
+--	struct nlattr *links, *link;
+--	int link_id;
+- 
+- 	hdr = nl80211hdr_put(msg, portid, seq, flags, cmd);
+- 	if (!hdr) {
+-@@ -8270,45 +8266,11 @@ static int nl80211_send_station(struct s
+- 			goto nla_put_failure;
+- 	}
+- 
+--	if (link_stats && sinfo->valid_links) {
+--		links = nla_nest_start(msg, NL80211_ATTR_MLO_LINKS);
+--		if (!links)
+--			goto nla_put_failure;
+--
+--		for_each_valid_link(sinfo, link_id) {
+--			link_sinfo = sinfo->links[link_id];
+--
+--			if (WARN_ON_ONCE(!link_sinfo))
+--				continue;
+--
+--			if (!is_valid_ether_addr(link_sinfo->addr))
+--				continue;
+--
+--			link = nla_nest_start(msg, link_id + 1);
+--			if (!link)
+--				goto nla_put_failure;
+--
+--			if (nla_put_u8(msg, NL80211_ATTR_MLO_LINK_ID,
+--				       link_id))
+--				goto nla_put_failure;
+--
+--			if (nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN,
+--				    link_sinfo->addr))
+--				goto nla_put_failure;
+--
+--			if (nl80211_fill_link_station(msg, rdev, link_sinfo))
+--				goto nla_put_failure;
+--
+--			nla_nest_end(msg, link);
+--		}
+--		nla_nest_end(msg, links);
+--	}
+--
+- 	cfg80211_sinfo_release_content(sinfo);
+- 	genlmsg_end(msg, hdr);
+- 	return 0;
+- 
+-- nla_put_failure:
+-+nla_put_failure:
+- 	cfg80211_sinfo_release_content(sinfo);
+- 	genlmsg_cancel(msg, hdr);
+- 	return -EMSGSIZE;
+-@@ -8561,7 +8523,7 @@ static int nl80211_dump_station(struct s
+- 				NETLINK_CB(cb->skb).portid,
+- 				cb->nlh->nlmsg_seq, NLM_F_MULTI,
+- 				rdev, wdev, mac_addr,
+--				&sinfo, false) < 0)
+-+				&sinfo) < 0)
+- 			goto out;
+- 
+- 		sta_idx++;
+-@@ -8625,7 +8587,7 @@ static int nl80211_get_station(struct sk
+- 
+- 	if (nl80211_send_station(msg, NL80211_CMD_NEW_STATION,
+- 				 info->snd_portid, info->snd_seq, 0,
+--				 rdev, wdev, mac_addr, &sinfo, false) < 0) {
+-+				 rdev, wdev, mac_addr, &sinfo) < 0) {
+- 		nlmsg_free(msg);
+- 		return -ENOBUFS;
+- 	}
+-@@ -21647,7 +21609,7 @@ void cfg80211_new_sta(struct wireless_de
+- 		return;
+- 
+- 	if (nl80211_send_station(msg, NL80211_CMD_NEW_STATION, 0, 0, 0,
+--				 rdev, wdev, mac_addr, sinfo, false) < 0) {
+-+				 rdev, wdev, mac_addr, sinfo) < 0) {
+- 		nlmsg_free(msg);
+- 		return;
+- 	}
+-@@ -21677,7 +21639,7 @@ void cfg80211_del_sta_sinfo(struct wirel
+- 	}
+- 
+- 	if (nl80211_send_station(msg, NL80211_CMD_DEL_STATION, 0, 0, 0,
+--				 rdev, wdev, mac_addr, sinfo, false) < 0) {
+-+				 rdev, wdev, mac_addr, sinfo) < 0) {
+- 		nlmsg_free(msg);
+- 		return;
+- 	}
+diff --git a/package/kernel/mac80211/patches/subsys/002-wifi-cfg80211-Add-helper-to-pack-station-level-STA_I.patch b/package/kernel/mac80211/patches/subsys/002-wifi-cfg80211-Add-helper-to-pack-station-level-STA_I.patch
+deleted file mode 100644
+index 98ee01ca..00000000
+--- a/package/kernel/mac80211/patches/subsys/002-wifi-cfg80211-Add-helper-to-pack-station-level-STA_I.patch
++++ /dev/null
+@@ -1,124 +0,0 @@
+-From 4b40378ac20384e58b9b6f2c4b800966ec14c137 Mon Sep 17 00:00:00 2001
+-From: P Praneesh <praneesh.p@oss.qualcomm.com>
+-Date: Sun, 14 Jun 2026 10:47:32 +0530
+-Subject: [PATCH 2/5] wifi: cfg80211: Add helper to pack station-level STA_INFO
+-
+-Add a helper function nl80211_put_sta_info_common() to pack the
+-station-level (aggregated) STA information into a netlink message.
+-This prepares the code for future enhancements such as supporting
+-fragmented link statistics in nl80211_dump_station.
+-
+-Signed-off-by: P Praneesh <praneesh.p@oss.qualcomm.com>
+-Link: https://patch.msgid.link/20260614051739.3979947-3-praneesh.p@oss.qualcomm.com
+-Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+----
+- net/wireless/nl80211.c | 66 +++++++++++++++++++++++++-----------------
+- 1 file changed, 39 insertions(+), 27 deletions(-)
+-
+---- a/net/wireless/nl80211.c
+-+++ b/net/wireless/nl80211.c
+-@@ -8041,32 +8041,15 @@ nla_put_failure:
+- 	return -EMSGSIZE;
+- }
+- 
+--static int nl80211_send_station(struct sk_buff *msg, u32 cmd, u32 portid,
+--				u32 seq, int flags,
+--				struct cfg80211_registered_device *rdev,
+--				struct wireless_dev *wdev,
+--				const u8 *mac_addr, struct station_info *sinfo)
+-+static int nl80211_put_sta_info_common(struct sk_buff *msg,
+-+				       struct cfg80211_registered_device *rdev,
+-+				       struct station_info *sinfo)
+- {
+--	void *hdr;
+- 	struct nlattr *sinfoattr, *bss_param;
+- 
+--	hdr = nl80211hdr_put(msg, portid, seq, flags, cmd);
+--	if (!hdr) {
+--		cfg80211_sinfo_release_content(sinfo);
+--		return -1;
+--	}
+--
+--	if ((wdev->netdev &&
+--	     nla_put_u32(msg, NL80211_ATTR_IFINDEX, wdev->netdev->ifindex)) ||
+--	    nla_put_u64_64bit(msg, NL80211_ATTR_WDEV, wdev_id(wdev),
+--			      NL80211_ATTR_PAD) ||
+--	    nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, mac_addr) ||
+--	    nla_put_u32(msg, NL80211_ATTR_GENERATION, sinfo->generation))
+--		goto nla_put_failure;
+--
+--	sinfoattr = nla_nest_start_noflag(msg, NL80211_ATTR_STA_INFO);
+-+	sinfoattr = nla_nest_start(msg, NL80211_ATTR_STA_INFO);
+- 	if (!sinfoattr)
+--		goto nla_put_failure;
+-+		return -EMSGSIZE;
+- 
+- #define PUT_SINFO(attr, memb, type) do {				\
+- 	BUILD_BUG_ON(sizeof(type) == sizeof(u64));			\
+-@@ -8157,8 +8140,7 @@ static int nl80211_send_station(struct s
+- 	PUT_SINFO_U64(T_OFFSET, t_offset);
+- 
+- 	if (sinfo->filled & BIT_ULL(NL80211_STA_INFO_BSS_PARAM)) {
+--		bss_param = nla_nest_start_noflag(msg,
+--						  NL80211_STA_INFO_BSS_PARAM);
+-+		bss_param = nla_nest_start(msg, NL80211_STA_INFO_BSS_PARAM);
+- 		if (!bss_param)
+- 			goto nla_put_failure;
+- 
+-@@ -8200,8 +8182,7 @@ static int nl80211_send_station(struct s
+- 		struct nlattr *tidsattr;
+- 		int tid;
+- 
+--		tidsattr = nla_nest_start_noflag(msg,
+--						 NL80211_STA_INFO_TID_STATS);
+-+		tidsattr = nla_nest_start(msg, NL80211_STA_INFO_TID_STATS);
+- 		if (!tidsattr)
+- 			goto nla_put_failure;
+- 
+-@@ -8214,7 +8195,7 @@ static int nl80211_send_station(struct s
+- 			if (!tidstats->filled)
+- 				continue;
+- 
+--			tidattr = nla_nest_start_noflag(msg, tid + 1);
+-+			tidattr = nla_nest_start(msg, tid + 1);
+- 			if (!tidattr)
+- 				goto nla_put_failure;
+- 
+-@@ -8244,6 +8225,37 @@ static int nl80211_send_station(struct s
+- 	}
+- 
+- 	nla_nest_end(msg, sinfoattr);
+-+	return 0;
+-+
+-+nla_put_failure:
+-+	nla_nest_cancel(msg, sinfoattr);
+-+	return -EMSGSIZE;
+-+}
+-+
+-+static int nl80211_send_station(struct sk_buff *msg, u32 cmd, u32 portid,
+-+				u32 seq, int flags,
+-+				struct cfg80211_registered_device *rdev,
+-+				struct wireless_dev *wdev,
+-+				const u8 *mac_addr, struct station_info *sinfo)
+-+{
+-+	void *hdr;
+-+
+-+	hdr = nl80211hdr_put(msg, portid, seq, flags, cmd);
+-+	if (!hdr) {
+-+		cfg80211_sinfo_release_content(sinfo);
+-+		return -1;
+-+	}
+-+
+-+	if ((wdev->netdev &&
+-+	     nla_put_u32(msg, NL80211_ATTR_IFINDEX, wdev->netdev->ifindex)) ||
+-+	    nla_put_u64_64bit(msg, NL80211_ATTR_WDEV, wdev_id(wdev),
+-+			      NL80211_ATTR_PAD) ||
+-+	    nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, mac_addr) ||
+-+	    nla_put_u32(msg, NL80211_ATTR_GENERATION, sinfo->generation))
+-+		goto nla_put_failure;
+-+
+-+	if (nl80211_put_sta_info_common(msg, rdev, sinfo))
+-+		goto nla_put_failure;
+- 
+- 	if (sinfo->assoc_req_ies_len &&
+- 	    nla_put(msg, NL80211_ATTR_IE, sinfo->assoc_req_ies_len,
+diff --git a/package/kernel/mac80211/patches/subsys/003-wifi-cfg80211-Refactor-nl80211_dump_station-to-prepa.patch b/package/kernel/mac80211/patches/subsys/003-wifi-cfg80211-Refactor-nl80211_dump_station-to-prepa.patch
+deleted file mode 100644
+index 3b95b5a1..00000000
+--- a/package/kernel/mac80211/patches/subsys/003-wifi-cfg80211-Refactor-nl80211_dump_station-to-prepa.patch
++++ /dev/null
+@@ -1,252 +0,0 @@
+-From 727afb05ef6322c5a430d971301adad90eb040b0 Mon Sep 17 00:00:00 2001
+-From: P Praneesh <praneesh.p@oss.qualcomm.com>
+-Date: Sun, 14 Jun 2026 10:47:33 +0530
+-Subject: [PATCH 3/5] wifi: cfg80211: Refactor nl80211_dump_station() to
+- prepare for per-link stats
+-
+-Currently, nl80211_dump_station() relies on the netlink callback's generic
+-args array (cb->args[2]) to track the station index during dumps. It also
+-processes the entire sinfo structure and transmits it to userspace
+-immediately in a single pass.
+-
+-This approach creates a bottleneck for MLO. When an MLD station has
+-multiple active links, the aggregated station information, combined
+-with the individual per-link statistics, can easily exceed the
+-maximum netlink message size limits. The current monolithic dump
+-iteration cannot pause and resume mid-station to fragment these large
+-per-link statistics across multiple netlink messages.
+-
+-Introduce a stateful context structure (struct nl80211_dump_station_ctx)
+-allocated during the dump to track the iteration state. Store the context
+-pointer directly at cb->args[2], following the same pattern as
+-nl80211_dump_wiphy which stores its state pointer at cb->args[0].
+-
+-Move the station index (sta_idx) tracking and the sinfo payload into this
+-context. The per-station netlink message is built inline in the loop:
+-common header attributes are assembled directly, then
+-nl80211_put_sta_info_common() adds the STA_INFO payload.
+-
+-Furthermore, move the NL80211_CMD_GET_STATION command definition from
+-genl_small_ops to genl_ops to natively support the .done callback.
+-Implement nl80211_dump_station_done() to ensure the newly allocated state
+-context and its deeply allocated sinfo payload are safely freed when the
+-dump concludes or is aborted prematurely by userspace.
+-
+-Note that the previous dump path used nl80211_send_station(), which
+-included NL80211_ATTR_IE and NL80211_ATTR_RESP_IE. These attributes are
+-not carried forward in this implementation. As documented, association
+-response IEs (assoc_resp_ies) are only relevant at station creation time
+-(e.g. via cfg80211_new_sta()) to notify userspace about association
+-details, and are not expected to be part of get_station()/dump_station()
+-callbacks. Aligning with this expectation, these IEs are intentionally
+-omitted here.
+-
+-This refactoring maintains the existing netlink batching performance while
+-laying the stateful foundation required for per-link statistics
+-fragmentation in subsequent patches.
+-
+-At out_err_release, cfg80211_sinfo_release_content() frees any
+-dynamically allocated sub-fields inside ctx->sinfo (including per-link
+-pointers in sinfo.links[]). Without the subsequent memset, those
+-pointers remain non-NULL in the embedded sinfo. When the dump concludes
+-or is aborted, nl80211_dump_station_done() calls
+-cfg80211_sinfo_release_content() a second time on the same ctx->sinfo,
+-which would free the already-released link memory. The
+-memset(&ctx->sinfo, 0, sizeof(ctx->sinfo)) zeroes all pointers so the
+-second release call hits kfree(NULL), which is a harmless no-op.
+-
+-Signed-off-by: P Praneesh <praneesh.p@oss.qualcomm.com>
+-Link: https://patch.msgid.link/20260614051739.3979947-4-praneesh.p@oss.qualcomm.com
+-Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+----
+- net/wireless/nl80211.c | 129 +++++++++++++++++++++++++++--------------
+- 1 file changed, 85 insertions(+), 44 deletions(-)
+-
+---- a/net/wireless/nl80211.c
+-+++ b/net/wireless/nl80211.c
+-@@ -8476,16 +8476,19 @@ static void cfg80211_sta_set_mld_sinfo(s
+- 	sinfo->filled &= ~BIT_ULL(NL80211_STA_INFO_CHAIN_SIGNAL_AVG);
+- }
+- 
+-+struct nl80211_dump_station_ctx {
+-+	int sta_idx;
+-+	u8 mac_addr[ETH_ALEN];
+-+	struct station_info sinfo;
+-+};
+-+
+- static int nl80211_dump_station(struct sk_buff *skb,
+- 				struct netlink_callback *cb)
+- {
+--	struct station_info sinfo;
+- 	struct cfg80211_registered_device *rdev;
+- 	struct wireless_dev *wdev;
+--	u8 mac_addr[ETH_ALEN];
+--	int sta_idx = cb->args[2];
+--	bool sinfo_alloc = false;
+--	int err, i;
+-+	struct nl80211_dump_station_ctx *ctx = (void *)cb->args[2];
+-+	int err;
+- 
+- 	err = nl80211_prepare_wdev_dump(cb, &rdev, &wdev, NULL);
+- 	if (err)
+-@@ -8493,6 +8496,15 @@ static int nl80211_dump_station(struct s
+- 	/* nl80211_prepare_wdev_dump acquired it in the successful case */
+- 	__acquire(&rdev->wiphy.mtx);
+- 
+-+	if (!ctx) {
+-+		ctx = kzalloc_obj(*ctx);
+-+		if (!ctx) {
+-+			err = -ENOMEM;
+-+			goto out_err;
+-+		}
+-+		cb->args[2] = (long)ctx;
+-+	}
+-+
+- 	if (!wdev->netdev && wdev->iftype != NL80211_IFTYPE_NAN) {
+- 		err = -EINVAL;
+- 		goto out_err;
+-@@ -8503,55 +8515,83 @@ static int nl80211_dump_station(struct s
+- 		goto out_err;
+- 	}
+- 
+--	while (1) {
+--		memset(&sinfo, 0, sizeof(sinfo));
+-+	while (true) {
+-+		void *hdr;
+- 
+--		for (i = 0; i < IEEE80211_MLD_MAX_NUM_LINKS; i++) {
+--			sinfo.links[i] =
+--				kzalloc_obj(*sinfo.links[0]);
+--			if (!sinfo.links[i]) {
+-+		memset(&ctx->sinfo, 0, sizeof(ctx->sinfo));
+-+		for (int i = 0; i < IEEE80211_MLD_MAX_NUM_LINKS; i++) {
+-+			ctx->sinfo.links[i] =
+-+				kzalloc_obj(*ctx->sinfo.links[0]);
+-+			if (!ctx->sinfo.links[i]) {
+- 				err = -ENOMEM;
+--				goto out_err;
+-+				goto out_err_release;
+- 			}
+--			sinfo_alloc = true;
+- 		}
+- 
+--		err = rdev_dump_station(rdev, wdev, sta_idx,
+--					mac_addr, &sinfo);
+--		if (err == -ENOENT)
+--			break;
+-+		err = rdev_dump_station(rdev, wdev, ctx->sta_idx,
+-+					ctx->mac_addr, &ctx->sinfo);
+-+		if (err == -ENOENT) {
+-+			err = skb->len;
+-+			goto out_err_release;
+-+		}
+- 		if (err)
+--			goto out_err;
+-+			goto out_err_release;
+- 
+--		if (sinfo.valid_links)
+--			cfg80211_sta_set_mld_sinfo(&sinfo);
+-+		if (ctx->sinfo.valid_links)
+-+			cfg80211_sta_set_mld_sinfo(&ctx->sinfo);
+- 
+--		/* reset the sinfo_alloc flag as nl80211_send_station()
+--		 * always releases sinfo
+--		 */
+--		sinfo_alloc = false;
+-+		hdr = nl80211hdr_put(skb, NETLINK_CB(cb->skb).portid,
+-+				     cb->nlh->nlmsg_seq, NLM_F_MULTI,
+-+				     NL80211_CMD_NEW_STATION);
+-+		if (!hdr) {
+-+			err = skb->len;
+-+			goto out_err_release;
+-+		}
+- 
+--		if (nl80211_send_station(skb, NL80211_CMD_NEW_STATION,
+--				NETLINK_CB(cb->skb).portid,
+--				cb->nlh->nlmsg_seq, NLM_F_MULTI,
+--				rdev, wdev, mac_addr,
+--				&sinfo) < 0)
+--			goto out;
+-+		if ((wdev->netdev &&
+-+		     nla_put_u32(skb, NL80211_ATTR_IFINDEX,
+-+				 wdev->netdev->ifindex)) ||
+-+		    nla_put_u64_64bit(skb, NL80211_ATTR_WDEV,
+-+				      wdev_id(wdev), NL80211_ATTR_PAD) ||
+-+		    nla_put(skb, NL80211_ATTR_MAC, ETH_ALEN, ctx->mac_addr) ||
+-+		    nla_put_u32(skb, NL80211_ATTR_GENERATION,
+-+				ctx->sinfo.generation)) {
+-+			genlmsg_cancel(skb, hdr);
+-+			err = skb->len;
+-+			goto out_err_release;
+-+		}
+- 
+--		sta_idx++;
+-+		if (nl80211_put_sta_info_common(skb, rdev, &ctx->sinfo)) {
+-+			genlmsg_cancel(skb, hdr);
+-+			err = skb->len;
+-+			goto out_err_release;
+-+		}
+-+
+-+		genlmsg_end(skb, hdr);
+-+		cfg80211_sinfo_release_content(&ctx->sinfo);
+-+		ctx->sta_idx++;
+- 	}
+- 
+-- out:
+--	cb->args[2] = sta_idx;
+--	err = skb->len;
+-- out_err:
+--	if (sinfo_alloc)
+--		cfg80211_sinfo_release_content(&sinfo);
+-+out_err_release:
+-+	cfg80211_sinfo_release_content(&ctx->sinfo);
+-+	memset(&ctx->sinfo, 0, sizeof(ctx->sinfo));
+-+out_err:
+- 	wiphy_unlock(&rdev->wiphy);
+- 
+- 	return err;
+- }
+- 
+-+static int nl80211_dump_station_done(struct netlink_callback *cb)
+-+{
+-+	struct nl80211_dump_station_ctx *ctx = (void *)cb->args[2];
+-+
+-+	if (ctx) {
+-+		cfg80211_sinfo_release_content(&ctx->sinfo);
+-+		kfree(ctx);
+-+	}
+-+	return 0;
+-+}
+-+
+- static int nl80211_get_station(struct sk_buff *skb, struct genl_info *info)
+- {
+- 	struct cfg80211_registered_device *rdev = info->user_ptr[0];
+-@@ -19516,6 +19556,14 @@ static const struct genl_ops nl80211_ops
+- 		/* can be retrieved by unprivileged users */
+- 		.internal_flags = IFLAGS(NL80211_FLAG_NEED_WIPHY),
+- 	},
+-+	{
+-+		.cmd = NL80211_CMD_GET_STATION,
+-+		.validate = GENL_DONT_VALIDATE_STRICT | GENL_DONT_VALIDATE_DUMP,
+-+		.doit = nl80211_get_station,
+-+		.dumpit = nl80211_dump_station,
+-+		.done = nl80211_dump_station_done,
+-+		.internal_flags = IFLAGS(NL80211_FLAG_NEED_WDEV),
+-+	},
+- };
+- 
+- static const struct genl_small_ops nl80211_small_ops[] = {
+-@@ -19616,13 +19664,6 @@ static const struct genl_small_ops nl802
+- 					 NL80211_FLAG_MLO_VALID_LINK_ID),
+- 	},
+- 	{
+--		.cmd = NL80211_CMD_GET_STATION,
+--		.validate = GENL_DONT_VALIDATE_STRICT | GENL_DONT_VALIDATE_DUMP,
+--		.doit = nl80211_get_station,
+--		.dumpit = nl80211_dump_station,
+--		.internal_flags = IFLAGS(NL80211_FLAG_NEED_WDEV),
+--	},
+--	{
+- 		.cmd = NL80211_CMD_SET_STATION,
+- 		.validate = GENL_DONT_VALIDATE_STRICT | GENL_DONT_VALIDATE_DUMP,
+- 		.doit = nl80211_set_station,
+diff --git a/package/kernel/mac80211/patches/subsys/004-wifi-cfg80211-Fragment-per-link-station-stats-in-nl8.patch b/package/kernel/mac80211/patches/subsys/004-wifi-cfg80211-Fragment-per-link-station-stats-in-nl8.patch
+deleted file mode 100644
+index e4bf125e..00000000
+--- a/package/kernel/mac80211/patches/subsys/004-wifi-cfg80211-Fragment-per-link-station-stats-in-nl8.patch
++++ /dev/null
+@@ -1,358 +0,0 @@
+-From dd21d1844aa096216e1be551d1ae5e57c27c837c Mon Sep 17 00:00:00 2001
+-From: P Praneesh <praneesh.p@oss.qualcomm.com>
+-Date: Sun, 14 Jun 2026 10:47:34 +0530
+-Subject: [PATCH 4/5] wifi: cfg80211: Fragment per-link station stats in
+- nl80211_dump_station()
+-
+-In MLO scenarios, stations may have multiple links, each with distinct
+-statistics. When userspace tools like iw or hostapd request station dumps,
+-attempting to pack all per-link stats into a single netlink message can
+-easily exceed the default 4KB buffer limit, especially when more than two
+-links are active. This results in -EMSGSIZE errors and incomplete data
+-delivery.
+-
+-To address this, fragment per-link station statistics across multiple
+-netlink messages to ensure reliable delivery of complete MLO station
+-information. Extend the stateful context with a two-phase dump mechanism:
+-phase 0 (AGGREGATED) sends combined MLO-level statistics and phase 1
+-(PER_LINK) sends individual per-link statistics for each active link.
+-
+-The dump loop is structured to produce exactly one netlink message per
+-iteration, with a common header (ifindex, wdev, mac, generation) built
+-once and phase-specific payload added via a switch statement. This keeps
+-header construction in one place and makes the EMSGSIZE bail-out uniform.
+-
+-Add a new request flag attribute, NL80211_ATTR_STA_DUMP_LINK_STATS
+-(NLA_FLAG), for NL80211_CMD_GET_STATION dump. Userspace can set this
+-flag to request per-link station statistics for MLO stations.
+-
+-Extract this flag during the first dump invocation by passing an attrbuf
+-to nl80211_prepare_wdev_dump(); use __free(kfree) to avoid scattered
+-manual kfree() calls. Cache the boolean in the dump context to avoid
+-repeated parsing on subsequent invocations.
+-
+-Per-link messages carry a single NL80211_ATTR_MLO_LINKS nest with the
+-link ID, link-specific MAC, and per-link NL80211_ATTR_STA_INFO payload.
+-The link-specific validity (is_valid_ether_addr) and null pointer guard
+-are checked in nl80211_put_link_station_payload() before any message
+-construction begins.
+-
+-Also fix all nla_nest_start_noflag() calls in nl80211_fill_link_station()
+-for nested attribute types (STA_INFO, BSS_PARAM, TID_STATS, per-tid) to
+-use nla_nest_start() so the NLA_F_NESTED flag is set correctly.
+-
+-Propagate the actual return value from nl80211_put_sta_info_common() in
+-the AGGREGATED phase rather than returning skb->len. Returning skb->len
+-signals netlink to re-invoke the dump with the same sta_idx, causing an
+-infinite loop when the aggregated payload is too large to fit; returning
+-the real error code (-EMSGSIZE or otherwise) terminates the dump cleanly.
+-
+-Backward compatibility is seamlessly preserved for non-MLO stations.
+-
+-Signed-off-by: P Praneesh <praneesh.p@oss.qualcomm.com>
+-Link: https://patch.msgid.link/20260614051739.3979947-5-praneesh.p@oss.qualcomm.com
+-Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+----
+- include/uapi/linux/nl80211.h |  19 ++++
+- net/wireless/nl80211.c       | 172 ++++++++++++++++++++++++++++-------
+- 2 files changed, 158 insertions(+), 33 deletions(-)
+-
+---- a/include/uapi/linux/nl80211.h
+-+++ b/include/uapi/linux/nl80211.h
+-@@ -3165,6 +3165,23 @@ enum nl80211_commands {
+-  * @NL80211_ATTR_NPCA_PRIMARY_FREQ: NPCA primary channel (u32)
+-  * @NL80211_ATTR_NPCA_PUNCT_BITMAP: NPCA puncturing bitmap (u32)
+-  *
+-+ * @NL80211_ATTR_STA_DUMP_LINK_STATS: Request flag for %NL80211_CMD_GET_STATION
+-+ *	(dump mode only). When set on an MLD station, the dump produces two
+-+ *	%NL80211_CMD_NEW_STATION messages per station per dump call:
+-+ *
+-+ *	1. An aggregated-stats message whose top-level %NL80211_ATTR_STA_INFO
+-+ *	   contains MLO-combined statistics (same content as a dump without
+-+ *	   this flag).
+-+ *
+-+ *	2. For each active link, a per-link message containing
+-+ *	   %NL80211_ATTR_MLO_LINKS with a single link entry. Each entry holds
+-+ *	   %NL80211_ATTR_MLO_LINK_ID, the link-specific %NL80211_ATTR_MAC,
+-+ *	   and %NL80211_ATTR_STA_INFO with per-link statistics (see
+-+ *	   &enum nl80211_sta_info).
+-+ *
+-+ *	The aggregated message always precedes the per-link messages for the
+-+ *	same station within a dump sequence.
+-+ *
+-  * @NUM_NL80211_ATTR: total number of nl80211_attrs available
+-  * @NL80211_ATTR_MAX: highest attribute number currently defined
+-  * @__NL80211_ATTR_AFTER_LAST: internal use
+-@@ -3763,6 +3780,8 @@ enum nl80211_attrs {
+- 	NL80211_ATTR_NPCA_PRIMARY_FREQ,
+- 	NL80211_ATTR_NPCA_PUNCT_BITMAP,
+- 
+-+	NL80211_ATTR_STA_DUMP_LINK_STATS,
+-+
+- 	/* add attributes here, update the policy in nl80211.c */
+- 
+- 	__NL80211_ATTR_AFTER_LAST,
+---- a/net/wireless/nl80211.c
+-+++ b/net/wireless/nl80211.c
+-@@ -1095,6 +1095,7 @@ static const struct nla_policy nl80211_p
+- 	[NL80211_ATTR_NPCA_PRIMARY_FREQ] = { .type = NLA_U32 },
+- 	[NL80211_ATTR_NPCA_PUNCT_BITMAP] =
+- 		NLA_POLICY_FULL_RANGE(NLA_U32, &nl80211_punct_bitmap_range),
+-+	[NL80211_ATTR_STA_DUMP_LINK_STATS] = { .type = NLA_FLAG },
+- };
+- 
+- /* policy for the key attributes */
+-@@ -7882,7 +7883,7 @@ static int nl80211_fill_link_station(str
+- 		goto nla_put_failure;					\
+- 	} while (0)
+- 
+--	link_sinfoattr = nla_nest_start_noflag(msg, NL80211_ATTR_STA_INFO);
+-+	link_sinfoattr = nla_nest_start(msg, NL80211_ATTR_STA_INFO);
+- 	if (!link_sinfoattr)
+- 		goto nla_put_failure;
+- 
+-@@ -7948,8 +7949,8 @@ static int nl80211_fill_link_station(str
+- 	PUT_LINK_SINFO(BEACON_LOSS, beacon_loss_count, u32);
+- 
+- 	if (link_sinfo->filled & BIT_ULL(NL80211_STA_INFO_BSS_PARAM)) {
+--		bss_param = nla_nest_start_noflag(msg,
+--						  NL80211_STA_INFO_BSS_PARAM);
+-+		bss_param = nla_nest_start(msg,
+-+					   NL80211_STA_INFO_BSS_PARAM);
+- 		if (!bss_param)
+- 			goto nla_put_failure;
+- 
+-@@ -7991,8 +7992,7 @@ static int nl80211_fill_link_station(str
+- 		struct nlattr *tidsattr;
+- 		int tid;
+- 
+--		tidsattr = nla_nest_start_noflag(msg,
+--						 NL80211_STA_INFO_TID_STATS);
+-+		tidsattr = nla_nest_start(msg, NL80211_STA_INFO_TID_STATS);
+- 		if (!tidsattr)
+- 			goto nla_put_failure;
+- 
+-@@ -8005,7 +8005,7 @@ static int nl80211_fill_link_station(str
+- 			if (!tidstats->filled)
+- 				continue;
+- 
+--			tidattr = nla_nest_start_noflag(msg, tid + 1);
+-+			tidattr = nla_nest_start(msg, tid + 1);
+- 			if (!tidattr)
+- 				goto nla_put_failure;
+- 
+-@@ -8476,21 +8476,74 @@ static void cfg80211_sta_set_mld_sinfo(s
+- 	sinfo->filled &= ~BIT_ULL(NL80211_STA_INFO_CHAIN_SIGNAL_AVG);
+- }
+- 
+-+enum nl80211_dump_station_phase {
+-+	NL80211_DUMP_STA_PHASE_AGGREGATED = 0,
+-+	NL80211_DUMP_STA_PHASE_PER_LINK   = 1,
+-+};
+-+
+- struct nl80211_dump_station_ctx {
+- 	int sta_idx;
+-+	int link_idx;
+-+	enum nl80211_dump_station_phase phase;
+-+	bool dump_link_stats;
+- 	u8 mac_addr[ETH_ALEN];
+- 	struct station_info sinfo;
+- };
+- 
+-+static int nl80211_put_link_station_payload(struct sk_buff *msg,
+-+					    struct cfg80211_registered_device *rdev,
+-+					    struct station_info *sinfo,
+-+					    int link_idx)
+-+{
+-+	struct link_station_info *link_sinfo = sinfo->links[link_idx];
+-+	struct nlattr *links, *link;
+-+
+-+	if (WARN_ON_ONCE(!link_sinfo))
+-+		return -ENOENT;
+-+
+-+	if (!is_valid_ether_addr(link_sinfo->addr))
+-+		return -EADDRNOTAVAIL;
+-+
+-+	links = nla_nest_start(msg, NL80211_ATTR_MLO_LINKS);
+-+	if (!links)
+-+		return -EMSGSIZE;
+-+
+-+	link = nla_nest_start(msg, link_idx + 1);
+-+	if (!link)
+-+		goto nla_put_failure;
+-+
+-+	if (nla_put_u8(msg, NL80211_ATTR_MLO_LINK_ID, link_idx) ||
+-+	    nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, link_sinfo->addr))
+-+		goto nla_put_failure;
+-+
+-+	if (nl80211_fill_link_station(msg, rdev, link_sinfo))
+-+		goto nla_put_failure;
+-+
+-+	nla_nest_end(msg, link);
+-+	nla_nest_end(msg, links);
+-+	return 0;
+-+
+-+nla_put_failure:
+-+	nla_nest_cancel(msg, links);
+-+	return -EMSGSIZE;
+-+}
+-+
+- static int nl80211_dump_station(struct sk_buff *skb,
+- 				struct netlink_callback *cb)
+- {
+- 	struct cfg80211_registered_device *rdev;
+- 	struct wireless_dev *wdev;
+- 	struct nl80211_dump_station_ctx *ctx = (void *)cb->args[2];
+-+	struct nlattr **attrbuf __free(kfree) = NULL;
+- 	int err;
+- 
+--	err = nl80211_prepare_wdev_dump(cb, &rdev, &wdev, NULL);
+-+	if (!ctx) {
+-+		attrbuf = kzalloc_objs(*attrbuf, NUM_NL80211_ATTR);
+-+		if (!attrbuf)
+-+			return -ENOMEM;
+-+	}
+-+
+-+	err = nl80211_prepare_wdev_dump(cb, &rdev, &wdev, attrbuf);
+- 	if (err)
+- 		return err;
+- 	/* nl80211_prepare_wdev_dump acquired it in the successful case */
+-@@ -8502,6 +8555,9 @@ static int nl80211_dump_station(struct s
+- 			err = -ENOMEM;
+- 			goto out_err;
+- 		}
+-+		ctx->phase = NL80211_DUMP_STA_PHASE_AGGREGATED;
+-+		ctx->dump_link_stats =
+-+			!!attrbuf[NL80211_ATTR_STA_DUMP_LINK_STATS];
+- 		cb->args[2] = (long)ctx;
+- 	}
+- 
+-@@ -8517,34 +8573,53 @@ static int nl80211_dump_station(struct s
+- 
+- 	while (true) {
+- 		void *hdr;
+-+		int ret;
+- 
+--		memset(&ctx->sinfo, 0, sizeof(ctx->sinfo));
+--		for (int i = 0; i < IEEE80211_MLD_MAX_NUM_LINKS; i++) {
+--			ctx->sinfo.links[i] =
+--				kzalloc_obj(*ctx->sinfo.links[0]);
+--			if (!ctx->sinfo.links[i]) {
+--				err = -ENOMEM;
+-+		/* AGGREGATED phase: fetch sinfo from driver once per station */
+-+		if (ctx->phase == NL80211_DUMP_STA_PHASE_AGGREGATED) {
+-+			memset(&ctx->sinfo, 0, sizeof(ctx->sinfo));
+-+			for (int i = 0; i < IEEE80211_MLD_MAX_NUM_LINKS; i++) {
+-+				ctx->sinfo.links[i] =
+-+					kzalloc_obj(*ctx->sinfo.links[0]);
+-+				if (!ctx->sinfo.links[i]) {
+-+					err = -ENOMEM;
+-+					goto out_err_release;
+-+				}
+-+			}
+-+
+-+			err = rdev_dump_station(rdev, wdev, ctx->sta_idx,
+-+						ctx->mac_addr, &ctx->sinfo);
+-+			if (err == -ENOENT) {
+-+				err = skb->len;
+- 				goto out_err_release;
+- 			}
+--		}
+-+			if (err)
+-+				goto out_err_release;
+- 
+--		err = rdev_dump_station(rdev, wdev, ctx->sta_idx,
+--					ctx->mac_addr, &ctx->sinfo);
+--		if (err == -ENOENT) {
+--			err = skb->len;
+--			goto out_err_release;
+-+			if (ctx->sinfo.valid_links)
+-+				cfg80211_sta_set_mld_sinfo(&ctx->sinfo);
+-+		} else {
+-+			/* PER_LINK phase: advance to next valid link */
+-+			while (ctx->link_idx < IEEE80211_MLD_MAX_NUM_LINKS &&
+-+			       !(ctx->sinfo.valid_links & BIT(ctx->link_idx)))
+-+				ctx->link_idx++;
+-+
+-+			if (ctx->link_idx >= IEEE80211_MLD_MAX_NUM_LINKS) {
+-+				cfg80211_sinfo_release_content(&ctx->sinfo);
+-+				ctx->sta_idx++;
+-+				ctx->phase = NL80211_DUMP_STA_PHASE_AGGREGATED;
+-+				continue;
+-+			}
+- 		}
+--		if (err)
+--			goto out_err_release;
+--
+--		if (ctx->sinfo.valid_links)
+--			cfg80211_sta_set_mld_sinfo(&ctx->sinfo);
+- 
+-+		/* Build common header for both phases */
+- 		hdr = nl80211hdr_put(skb, NETLINK_CB(cb->skb).portid,
+- 				     cb->nlh->nlmsg_seq, NLM_F_MULTI,
+- 				     NL80211_CMD_NEW_STATION);
+- 		if (!hdr) {
+- 			err = skb->len;
+-+			if (ctx->phase == NL80211_DUMP_STA_PHASE_PER_LINK)
+-+				goto out_err;
+- 			goto out_err_release;
+- 		}
+- 
+-@@ -8558,18 +8633,49 @@ static int nl80211_dump_station(struct s
+- 				ctx->sinfo.generation)) {
+- 			genlmsg_cancel(skb, hdr);
+- 			err = skb->len;
+-+			if (ctx->phase == NL80211_DUMP_STA_PHASE_PER_LINK)
+-+				goto out_err;
+- 			goto out_err_release;
+- 		}
+- 
+--		if (nl80211_put_sta_info_common(skb, rdev, &ctx->sinfo)) {
+--			genlmsg_cancel(skb, hdr);
+--			err = skb->len;
+--			goto out_err_release;
+--		}
+-+		switch (ctx->phase) {
+-+		case NL80211_DUMP_STA_PHASE_AGGREGATED:
+-+			ret = nl80211_put_sta_info_common(skb, rdev, &ctx->sinfo);
+-+			if (ret) {
+-+				genlmsg_cancel(skb, hdr);
+-+				err = ret;
+-+				goto out_err_release;
+-+			}
+-+			genlmsg_end(skb, hdr);
+-+
+-+			if (ctx->dump_link_stats && ctx->sinfo.valid_links) {
+-+				ctx->phase = NL80211_DUMP_STA_PHASE_PER_LINK;
+-+				ctx->link_idx = 0;
+-+			} else {
+-+				cfg80211_sinfo_release_content(&ctx->sinfo);
+-+				ctx->sta_idx++;
+-+			}
+-+			break;
+- 
+--		genlmsg_end(skb, hdr);
+--		cfg80211_sinfo_release_content(&ctx->sinfo);
+--		ctx->sta_idx++;
+-+		case NL80211_DUMP_STA_PHASE_PER_LINK:
+-+			ret = nl80211_put_link_station_payload(skb, rdev,
+-+							       &ctx->sinfo,
+-+							       ctx->link_idx);
+-+			if (ret == -EMSGSIZE) {
+-+				genlmsg_cancel(skb, hdr);
+-+				err = skb->len;
+-+				goto out_err;
+-+			}
+-+			if (ret) {
+-+				/* skip invalid link, do not abort the dump */
+-+				genlmsg_cancel(skb, hdr);
+-+				ctx->link_idx++;
+-+				continue;
+-+			}
+-+			genlmsg_end(skb, hdr);
+-+			ctx->link_idx++;
+-+			break;
+-+		}
+- 	}
+- 
+- out_err_release:
+diff --git a/package/kernel/mac80211/patches/subsys/005-wifi-cfg80211-support-MAC-address-filtering-in-stati.patch b/package/kernel/mac80211/patches/subsys/005-wifi-cfg80211-support-MAC-address-filtering-in-stati.patch
+deleted file mode 100644
+index 94e0f690..00000000
+--- a/package/kernel/mac80211/patches/subsys/005-wifi-cfg80211-support-MAC-address-filtering-in-stati.patch
++++ /dev/null
+@@ -1,113 +0,0 @@
+-From f9202a374ec34e767185cf44f44ed2fbdf6bf053 Mon Sep 17 00:00:00 2001
+-From: P Praneesh <praneesh.p@oss.qualcomm.com>
+-Date: Sun, 14 Jun 2026 10:47:35 +0530
+-Subject: [PATCH 5/5] wifi: cfg80211: support MAC address filtering in station
+- dump for link stats
+-
+-Currently, when userspace requests station information with
+-link statistics using NL80211_CMD_GET_STATION with the
+-NL80211_ATTR_STA_DUMP_LINK_STATS flag, the kernel uses the .doit callback
+-(nl80211_get_station) which sends a single netlink message. For MLO
+-stations with multiple links, the link statistics can be large and may
+-exceed the maximum netlink message size, causing the operation to fail
+-with -EMSGSIZE.
+-
+-The .dumpit callback (nl80211_dump_station) already supports
+-fragmentation across multiple netlink messages, making it suitable
+-for handling large link statistics. However, it currently iterates over
+-all stations on the interface, which is inefficient when userspace only
+-wants information about a specific station.
+-
+-Add support for MAC address filtering in nl80211_dump_station to allow
+-userspace to request fragmented link statistics for a specific station.
+-When NL80211_ATTR_MAC is present in a dump request, cache the MAC address
+-in the dump context and use rdev_get_station() to retrieve information for
+-only that station, instead of iterating over all stations with
+-rdev_dump_station().
+-
+-This allows userspace tools (like iw) to use NL80211_CMD_GET_STATION with
+-NLM_F_DUMP flag to retrieve complete link statistics for a specific
+-station across multiple netlink messages, avoiding the message size
+-limitation.
+-
+-Signed-off-by: P Praneesh <praneesh.p@oss.qualcomm.com>
+-Link: https://patch.msgid.link/20260614051739.3979947-6-praneesh.p@oss.qualcomm.com
+-Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+----
+- net/wireless/nl80211.c | 41 +++++++++++++++++++++++++++++++++++++----
+- 1 file changed, 37 insertions(+), 4 deletions(-)
+-
+---- a/net/wireless/nl80211.c
+-+++ b/net/wireless/nl80211.c
+-@@ -8486,6 +8486,8 @@ struct nl80211_dump_station_ctx {
+- 	int link_idx;
+- 	enum nl80211_dump_station_phase phase;
+- 	bool dump_link_stats;
+-+	bool filter_mac;
+-+	u8 filter_mac_addr[ETH_ALEN];
+- 	u8 mac_addr[ETH_ALEN];
+- 	struct station_info sinfo;
+- };
+-@@ -8555,10 +8557,22 @@ static int nl80211_dump_station(struct s
+- 			err = -ENOMEM;
+- 			goto out_err;
+- 		}
+-+		cb->args[2] = (long)ctx;
+- 		ctx->phase = NL80211_DUMP_STA_PHASE_AGGREGATED;
+- 		ctx->dump_link_stats =
+- 			!!attrbuf[NL80211_ATTR_STA_DUMP_LINK_STATS];
+--		cb->args[2] = (long)ctx;
+-+		if (attrbuf[NL80211_ATTR_MAC]) {
+-+			const u8 *mac = nla_data(attrbuf[NL80211_ATTR_MAC]);
+-+
+-+			if (!is_valid_ether_addr(mac)) {
+-+				kfree(ctx);
+-+				cb->args[2] = 0;
+-+				err = -EINVAL;
+-+				goto out_err;
+-+			}
+-+			ctx->filter_mac = true;
+-+			memcpy(ctx->filter_mac_addr, mac, ETH_ALEN);
+-+		}
+- 	}
+- 
+- 	if (!wdev->netdev && wdev->iftype != NL80211_IFTYPE_NAN) {
+-@@ -8566,7 +8580,12 @@ static int nl80211_dump_station(struct s
+- 		goto out_err;
+- 	}
+- 
+--	if (!rdev->ops->dump_station) {
+-+	if (ctx->filter_mac) {
+-+		if (!rdev->ops->get_station) {
+-+			err = -EOPNOTSUPP;
+-+			goto out_err;
+-+		}
+-+	} else if (!rdev->ops->dump_station) {
+- 		err = -EOPNOTSUPP;
+- 		goto out_err;
+- 	}
+-@@ -8587,8 +8606,22 @@ static int nl80211_dump_station(struct s
+- 				}
+- 			}
+- 
+--			err = rdev_dump_station(rdev, wdev, ctx->sta_idx,
+--						ctx->mac_addr, &ctx->sinfo);
+-+			if (ctx->filter_mac) {
+-+				if (ctx->sta_idx > 0) {
+-+					err = skb->len;
+-+					goto out_err_release;
+-+				}
+-+				err = rdev_get_station(rdev, wdev,
+-+						       ctx->filter_mac_addr,
+-+						       &ctx->sinfo);
+-+				if (!err)
+-+					memcpy(ctx->mac_addr,
+-+					       ctx->filter_mac_addr, ETH_ALEN);
+-+			} else {
+-+				err = rdev_dump_station(rdev, wdev, ctx->sta_idx,
+-+							ctx->mac_addr,
+-+							&ctx->sinfo);
+-+			}
+- 			if (err == -ENOENT) {
+- 				err = skb->len;
+- 				goto out_err_release;
+diff --git a/package/kernel/mac80211/patches/subsys/006-wifi-mac80211-set-info-band-for-802.3-encap-offload-.patch b/package/kernel/mac80211/patches/subsys/006-wifi-mac80211-set-info-band-for-802.3-encap-offload-.patch
+deleted file mode 100644
+index 37f3428a..00000000
+--- a/package/kernel/mac80211/patches/subsys/006-wifi-mac80211-set-info-band-for-802.3-encap-offload-.patch
++++ /dev/null
+@@ -1,49 +0,0 @@
+-From 4febc02cd02f021f2b6d0768332be643ef14a12d Mon Sep 17 00:00:00 2001
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Sat, 26 Sep 2026 14:02:16 +0200
+-Subject: [PATCH] wifi: mac80211: set info->band for 802.3 encap offload frames
+-
+-Unlike the 802.11 TX paths, ieee80211_8023_xmit() does not set
+-info->band from the channel context on non-MLD interfaces. It stays at
+-0, so ieee80211_get_tx_rates() uses the wrong band for these frames.
+-
+-Set it the same way as ieee80211_build_hdr(): drop the frame if there is
+-no channel context, and leave the band at 0 on MLD interfaces.
+-
+-Reported-by: Andrea Pesaresi <andreapesaresi82@gmail.com>
+-Fixes: 50ff477a8639 ("mac80211: add 802.11 encapsulation offloading support")
+-Cc: stable@vger.kernel.org
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+-Link: https://patch.msgid.link/20260926120216.4054712-1-nbd@nbd.name
+-Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+----
+- net/mac80211/tx.c | 11 +++++++++++
+- 1 file changed, 11 insertions(+)
+-
+---- a/net/mac80211/tx.c
+-+++ b/net/mac80211/tx.c
+-@@ -4677,6 +4677,7 @@ static void ieee80211_8023_xmit(struct i
+- {
+- 	struct ieee80211_tx_info *info;
+- 	struct ieee80211_local *local = sdata->local;
+-+	struct ieee80211_chanctx_conf *chanctx_conf;
+- 	struct tid_ampdu_tx *tid_tx = NULL;
+- 	struct sk_buff *seg, *next;
+- 	unsigned int skbs = 0, len = 0;
+-@@ -4726,6 +4727,16 @@ static void ieee80211_8023_xmit(struct i
+- 		sdata = container_of(sdata->bss,
+- 				     struct ieee80211_sub_if_data, u.ap);
+- 
+-+	/* MLD transmissions must not rely on the band */
+-+	if (!ieee80211_vif_is_mld(&sdata->vif)) {
+-+		chanctx_conf = rcu_dereference(sdata->vif.bss_conf.chanctx_conf);
+-+		if (unlikely(!chanctx_conf)) {
+-+			kfree_skb_list(skb);
+-+			return;
+-+		}
+-+		info->band = chanctx_conf->def.chan->band;
+-+	}
+-+
+- 	info->flags |= IEEE80211_TX_CTL_HW_80211_ENCAP;
+- 	info->control.vif = &sdata->vif;
+- 
 diff --git a/package/kernel/mac80211/patches/subsys/110-mac80211_keep_keys_on_stop_ap.patch b/package/kernel/mac80211/patches/subsys/110-mac80211_keep_keys_on_stop_ap.patch
 index 00f15c7e..5c79bf87 100644
 --- a/package/kernel/mac80211/patches/subsys/110-mac80211_keep_keys_on_stop_ap.patch
@@ -6492,6 +8232,2818 @@ index 78d951d8..0de78a4b 100644
   	TP_ARGS(local, sdata, sta, enabled)
   );
   
+diff --git a/package/kernel/mac80211/patches/subsys/391-wifi-mac80211-skip-default-WMM-setup-for-AP_VLAN-lin.patch b/package/kernel/mac80211/patches/subsys/391-wifi-mac80211-skip-default-WMM-setup-for-AP_VLAN-lin.patch
+deleted file mode 100644
+index 7806a823..00000000
+--- a/package/kernel/mac80211/patches/subsys/391-wifi-mac80211-skip-default-WMM-setup-for-AP_VLAN-lin.patch
++++ /dev/null
+@@ -1,27 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Tue, 4 Aug 2026 08:26:08 +0000
+-Subject: [PATCH] wifi: mac80211: skip default WMM setup for AP_VLAN links
+-
+-AP_VLAN interfaces are never passed to the driver, so setting default WMM
+-parameters on their links trips the check-sdata-in-driver warning in
+-drv_conf_tx(), as well as in the BSS_CHANGED_QOS link info notification.
+-Skip it, matching the existing AP_VLAN handling in this function.
+-
+-Fixes: 2259d14499d1 ("wifi: mac80211: set default WMM parameters on all links")
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+-Link: https://patch.msgid.link/20260804082608.2011433-1-nbd@nbd.name
+-Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+----
+-
+---- a/net/mac80211/link.c
+-+++ b/net/mac80211/link.c
+-@@ -360,7 +360,8 @@ static int ieee80211_vif_update_links(st
+- 		link = links[link_id];
+- 		ieee80211_link_init(sdata, link_id, &link->data, &link->conf);
+- 		ieee80211_link_setup(&link->data);
+--		ieee80211_set_wmm_default(&link->data, true, non_sta);
+-+		if (sdata->vif.type != NL80211_IFTYPE_AP_VLAN)
+-+			ieee80211_set_wmm_default(&link->data, true, non_sta);
+- 	}
+- 
+- 	if (new_links == 0)
+diff --git a/package/kernel/mac80211/patches/subsys/392-wifi-mac80211-fix-station-lookup-for-management-fram.patch b/package/kernel/mac80211/patches/subsys/392-wifi-mac80211-fix-station-lookup-for-management-fram.patch
+deleted file mode 100644
+index 3567ae34..00000000
+--- a/package/kernel/mac80211/patches/subsys/392-wifi-mac80211-fix-station-lookup-for-management-fram.patch
++++ /dev/null
+@@ -1,25 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Wed, 19 Aug 2026 12:31:49 +0000
+-Subject: [PATCH] wifi: mac80211: fix station lookup for management frames on
+- 4-address VLANs
+-
+-A 4-address station is moved to its own AP_VLAN interface, but management
+-frames for it are still transmitted on the AP interface. In that case the
+-per-interface lookup fails, so use the BSS wide lookup for management
+-frames as well.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+-
+---- a/net/mac80211/tx.c
+-+++ b/net/mac80211/tx.c
+-@@ -1238,7 +1238,8 @@ ieee80211_tx_prepare(struct ieee80211_su
+- 			tx->sta = rcu_dereference(sdata->u.vlan.sta);
+- 			if (!tx->sta && sdata->wdev.use_4addr)
+- 				return TX_DROP;
+--		} else if (tx->sdata->control_port_protocol == tx->skb->protocol) {
+-+		} else if (tx->sdata->control_port_protocol == tx->skb->protocol ||
+-+			   ieee80211_is_mgmt(hdr->frame_control)) {
+- 			tx->sta = sta_info_get_bss(sdata, hdr->addr1);
+- 		}
+- 		if (!tx->sta && !is_multicast_ether_addr(hdr->addr1)) {
+diff --git a/package/kernel/mac80211/patches/subsys/393-wifi-mac80211-reset-the-LED-state-when-ifup-fails.patch b/package/kernel/mac80211/patches/subsys/393-wifi-mac80211-reset-the-LED-state-when-ifup-fails.patch
+deleted file mode 100644
+index de2dbdbf..00000000
+--- a/package/kernel/mac80211/patches/subsys/393-wifi-mac80211-reset-the-LED-state-when-ifup-fails.patch
++++ /dev/null
+@@ -1,45 +0,0 @@
+-From 78183e8331958fda11cd2b6850bb424a9747c4b2 Mon Sep 17 00:00:00 2001
+-From: Johannes Berg <johannes.berg@intel.com>
+-Date: Fri, 4 Sep 2026 16:57:13 +0200
+-Subject: [PATCH] wifi: mac80211: reset the LED state when ifup fails
+-
+-When the first interface comes up, the radio LED is turned on. This can
+-start the TPT trigger timer, which continues running.
+-
+-But if bringing up the interface fails then the timer keeps running and
+-won't be stopped by anything, eventually it can be freed:
+-
+-  ODEBUG: free active (active state 0) object: ffff888127e12130 object type: timer_list hint: tpt_trig_timer+0x0/0x300 net/mac80211/led.c:145
+-  WARNING: CPU: 0 PID: 5923 at lib/debugobjects.c:612 debug_print_object+0x1a2/0x2b0
+-   debug_check_no_obj_freed+0x4b7/0x600 lib/debugobjects.c:1129
+-   kfree+0x436/0x670 mm/slub.c:6818
+-   ieee80211_led_exit+0x162/0x1c0 net/mac80211/led.c:210
+-   ieee80211_unregister_hw+0x27e/0x3a0 net/mac80211/main.c:1706
+-   rt2x00lib_remove_dev+0x55b/0x670
+-
+-Undo the LED state in the error path.
+-
+-Assisted-by: LLM
+-Fixes: 67408c8c7b9d ("mac80211: selective throughput LED trigger active")
+-Reported-by: syzbot+e84ecca6d1fa09a9b3d9@syzkaller.appspotmail.com
+-Closes: https://syzkaller.appspot.com/bug?extid=e84ecca6d1fa09a9b3d9
+-Link: https://patch.msgid.link/20260904165722.044aa432f873.I601a67a2cd558b8ef8416a07554ae7efe896e9d8@changeid
+-Signed-off-by: Johannes Berg <johannes.berg@intel.com>
+----
+-
+---- a/net/mac80211/iface.c
+-+++ b/net/mac80211/iface.c
+-@@ -1603,8 +1603,12 @@ int ieee80211_do_open(struct wireless_de
+-  err_del_interface:
+- 	drv_remove_interface(local, sdata);
+-  err_stop:
+--	if (!local->open_count)
+-+	if (!local->open_count) {
+-+		ieee80211_led_radio(local, false);
+-+		ieee80211_mod_tpt_led_trig(local, 0,
+-+					   IEEE80211_TPT_LEDTRIG_FL_RADIO);
+- 		drv_stop(local, false);
+-+	}
+- 	if (sdata->vif.type == NL80211_IFTYPE_NAN_DATA)
+- 		RCU_INIT_POINTER(sdata->u.nan_data.nmi, NULL);
+- 	if (sdata->vif.type == NL80211_IFTYPE_AP_VLAN)
+diff --git a/package/kernel/mac80211/patches/subsys/394-wifi-mac80211-select-the-link-a-management-frame-asks.patch b/package/kernel/mac80211/patches/subsys/394-wifi-mac80211-select-the-link-a-management-frame-asks.patch
+deleted file mode 100644
+index 52dad963..00000000
+--- a/package/kernel/mac80211/patches/subsys/394-wifi-mac80211-select-the-link-a-management-frame-asks.patch
++++ /dev/null
+@@ -1,69 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Tue, 08 Sep 2026 14:00:00 +0000
+-Subject: [PATCH] wifi: mac80211: select the link a management frame asks for
+-
+-ieee80211_mgmt_tx() walks the links of an AP MLD to decide whether the
+-frame needs an off-channel transmission. It pins the link to the one
+-that holds the requested channel only when the destination is a station
+-that is already associated as an MLD. A frame to an address the access
+-point does not know keeps link_id at -1.
+-
+-ieee80211_tx_skb_tid_band() then sees a frame whose transmitter address
+-is the MLD address and marks the link as IEEE80211_TX_CTRL_MLO_LINK
+-unspecified. The driver picks the default link, which is not the link
+-that holds the requested channel. mt7996 rewrites addr2 with the address
+-of that link and hands the frame to its phy, so the frame leaves on the
+-wrong band under the wrong address.
+-
+-A DPP Authentication Request shows this. The enrollee announces itself
+-on channel 6, the access point answers on the 5 GHz link, and the
+-enrollee never sees the frame.
+-
+-The channel the caller names identifies the link on its own. Pin the
+-link whenever the frame comes from the MLD address and an active link
+-holds that channel, whether or not the destination is a known station.
+-ieee80211_tx_skb_tid() warns on a link id for an interface that is not
+-an MLD and on one that names an inactive link, and active_links is zero
+-for an interface that is not an MLD, so that one test covers both. The
+-same holds for a station MLD that sends from its MLD address to an
+-address other than its AP.
+-
+-A link whose own address is the MLD address matched the frame on that
+-address first and ended the search, so the link with the requested
+-channel was never reached when a lower link uses the MLD address. Skip
+-such a link when the frame names another channel.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+-
+---- a/net/mac80211/offchannel.c
+-+++ b/net/mac80211/offchannel.c
+-@@ -926,6 +926,7 @@ int ieee80211_mgmt_tx(struct wiphy *wiph
+- 		/* Check all the links first */
+- 		for (i = 0; i < ARRAY_SIZE(sdata->vif.link_conf); i++) {
+- 			struct ieee80211_bss_conf *conf;
+-+			bool pin;
+- 
+- 			conf = rcu_dereference(sdata->vif.link_conf[i]);
+- 			if (!conf)
+-@@ -935,12 +936,18 @@ int ieee80211_mgmt_tx(struct wiphy *wiph
+- 			if (!chanctx_conf)
+- 				continue;
+- 
+--			if (mlo_sta && params->chan == chanctx_conf->def.chan &&
+--			    ether_addr_equal(sdata->vif.addr, mgmt->sa)) {
+-+			pin = (mlo_sta || (sdata->vif.active_links & BIT(i))) &&
+-+			      ether_addr_equal(sdata->vif.addr, mgmt->sa);
+-+			if (pin && params->chan == chanctx_conf->def.chan) {
+- 				link_id = i;
+- 				break;
+- 			}
+- 
+-+			if (pin && params->chan) {
+-+				chanctx_conf = NULL;
+-+				continue;
+-+			}
+-+
+- 			if (ether_addr_equal(conf->addr, mgmt->sa)) {
+- 				/* If userspace requested Tx on a specific link
+- 				 * use the same link id if the link bss is matching
+diff --git a/package/kernel/mac80211/patches/subsys/395-wifi-mac80211-retransmit-the-4-address-null-frame-until.patch b/package/kernel/mac80211/patches/subsys/395-wifi-mac80211-retransmit-the-4-address-null-frame-until.patch
+deleted file mode 100644
+index 42782ea4..00000000
+--- a/package/kernel/mac80211/patches/subsys/395-wifi-mac80211-retransmit-the-4-address-null-frame-until.patch
++++ /dev/null
+@@ -1,196 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Mon, 28 Sep 2026 12:00:00 +0000
+-Subject: [PATCH] wifi: mac80211: retransmit the 4-address null frame until
+- it is acknowledged
+-
+-A station in 4-address mode sends one 4-address null data frame after
+-association, or when 4-address mode is enabled while it is associated.
+-The access point sets up the 4-address station only when it receives
+-that frame. If the frame is lost, the access point keeps the station in
+-3-address mode.
+-
+-If the driver reports ACK status, request TX status for the frame and
+-send it again every second until the access point acknowledges it, for
+-at most ten transmissions, so that a driver that loses the TX status of
+-the frame does not keep it going for the whole association. The
+-retransmission stops on disassociation, when 4-address mode is
+-disabled, and when the interface stops. A hardware restart keeps the
+-association, so it does not stop the retransmission.
+-
+-The TX status path runs without the wiphy mutex and cannot cancel the
+-delayed work. It records the ACK instead, and the work then does
+-nothing.
+-
+-Based on 0089-mtk-mac80211-retransmit-4addr-nullfunc-if-the-ACK-is.patch
+-by Peter Chiu <chui-hao.chiu@mediatek.com> in the MediaTek feed. That
+-patch uses status type 3, which is IEEE80211_STATUS_TYPE_UHR_OMP here,
+-and cancels the work from the TX status path.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+-
+---- a/net/mac80211/ieee80211_i.h
+-+++ b/net/mac80211/ieee80211_i.h
+-@@ -100,6 +100,7 @@ enum ieee80211_status_data {
+- 	IEEE80211_STATUS_TYPE_SMPS	= 1,
+- 	IEEE80211_STATUS_TYPE_NEG_TTLM	= 2,
+- 	IEEE80211_STATUS_TYPE_UHR_OMP	= 3,
+-+	IEEE80211_STATUS_TYPE_4ADDR_NULLFUNC = 4,
+- 	IEEE80211_STATUS_SUBDATA_MASK	= 0x1ff0,
+- };
+- 
+-@@ -578,6 +579,9 @@ struct ieee80211_if_managed {
+- 	unsigned int uapsd_max_sp_len;
+- 
+- 	u8 use_4addr;
+-+	bool nullfunc_4addr_acked;
+-+	u8 nullfunc_4addr_tries;
+-+	struct wiphy_delayed_work nullfunc_4addr_work;
+- 
+- 	/*
+- 	 * State variables for keeping track of RSSI of the AP currently
+---- a/net/mac80211/mlme.c
+-+++ b/net/mac80211/mlme.c
+-@@ -44,6 +44,7 @@
+- #define IEEE80211_ASSOC_TIMEOUT_LONG	(HZ / 2)
+- #define IEEE80211_ASSOC_TIMEOUT_SHORT	(HZ / 10)
+- #define IEEE80211_ASSOC_MAX_TRIES	3
+-+#define IEEE80211_4ADDR_NULLFUNC_MAX_TRIES	10
+- 
+- #define IEEE80211_ADV_TTLM_SAFETY_BUFFER_MS (100 * USEC_PER_MSEC)
+- #define IEEE80211_ADV_TTLM_ST_UNDERFLOW 0xff00
+-@@ -2842,15 +2843,21 @@ void ieee80211_send_nullfunc(struct ieee
+- 	ieee80211_tx_skb(sdata, skb);
+- }
+- 
+--void ieee80211_send_4addr_nullfunc(struct ieee80211_local *local,
+--				   struct ieee80211_sub_if_data *sdata)
+-+static void ieee80211_tx_4addr_nullfunc(struct ieee80211_sub_if_data *sdata)
+- {
+-+	struct ieee80211_local *local = sdata->local;
+-+	bool ack_status = ieee80211_hw_check(&local->hw, REPORTS_TX_ACK_STATUS);
+-+	struct ieee80211_tx_info *info;
+- 	struct sk_buff *skb;
+- 	struct ieee80211_hdr *nullfunc;
+- 	__le16 fc;
+- 
+--	if (WARN_ON(sdata->vif.type != NL80211_IFTYPE_STATION))
+--		return;
+-+	/* The AP creates the 4-address station only on receiving this frame */
+-+	if (ack_status &&
+-+	    ++sdata->u.mgd.nullfunc_4addr_tries <
+-+	    IEEE80211_4ADDR_NULLFUNC_MAX_TRIES)
+-+		wiphy_delayed_work_queue(local->hw.wiphy,
+-+					 &sdata->u.mgd.nullfunc_4addr_work, HZ);
+- 
+- 	skb = dev_alloc_skb(local->hw.extra_tx_headroom + 30);
+- 	if (!skb)
+-@@ -2867,11 +2874,42 @@ void ieee80211_send_4addr_nullfunc(struc
+- 	memcpy(nullfunc->addr3, sdata->vif.cfg.ap_addr, ETH_ALEN);
+- 	memcpy(nullfunc->addr4, sdata->vif.addr, ETH_ALEN);
+- 
+--	IEEE80211_SKB_CB(skb)->flags |= IEEE80211_TX_INTFL_DONT_ENCRYPT;
+--	IEEE80211_SKB_CB(skb)->flags |= IEEE80211_TX_CTL_USE_MINRATE;
+-+	info = IEEE80211_SKB_CB(skb);
+-+	info->flags |= IEEE80211_TX_INTFL_DONT_ENCRYPT;
+-+	info->flags |= IEEE80211_TX_CTL_USE_MINRATE;
+-+	if (ack_status) {
+-+		info->flags |= IEEE80211_TX_CTL_REQ_TX_STATUS;
+-+		info->status_data = IEEE80211_STATUS_TYPE_4ADDR_NULLFUNC;
+-+	}
+- 	ieee80211_tx_skb(sdata, skb);
+- }
+- 
+-+static void ieee80211_nullfunc_4addr_work(struct wiphy *wiphy,
+-+					  struct wiphy_work *work)
+-+{
+-+	struct ieee80211_sub_if_data *sdata =
+-+		container_of(work, struct ieee80211_sub_if_data,
+-+			     u.mgd.nullfunc_4addr_work.work);
+-+	struct ieee80211_if_managed *ifmgd = &sdata->u.mgd;
+-+
+-+	if (!ifmgd->associated || !ifmgd->use_4addr ||
+-+	    READ_ONCE(ifmgd->nullfunc_4addr_acked))
+-+		return;
+-+
+-+	ieee80211_tx_4addr_nullfunc(sdata);
+-+}
+-+
+-+void ieee80211_send_4addr_nullfunc(struct ieee80211_local *local,
+-+				   struct ieee80211_sub_if_data *sdata)
+-+{
+-+	if (WARN_ON(sdata->vif.type != NL80211_IFTYPE_STATION))
+-+		return;
+-+
+-+	WRITE_ONCE(sdata->u.mgd.nullfunc_4addr_acked, false);
+-+	sdata->u.mgd.nullfunc_4addr_tries = 0;
+-+	ieee80211_tx_4addr_nullfunc(sdata);
+-+}
+-+
+- /* spectrum management related things */
+- static void ieee80211_csa_switch_work(struct wiphy *wiphy,
+- 				      struct wiphy_work *work)
+-@@ -4744,6 +4782,9 @@ static void ieee80211_set_disassoc(struc
+- 	wiphy_work_cancel(sdata->local->hw.wiphy,
+- 			  &ifmgd->teardown_ttlm_work);
+- 
+-+	wiphy_delayed_work_cancel(sdata->local->hw.wiphy,
+-+				  &ifmgd->nullfunc_4addr_work);
+-+
+- 	/* if disconnection happens in the middle of the ML reconfiguration
+- 	 * flow, cfg80211 must called to release the BSS references obtained
+- 	 * when the flow started.
+-@@ -9471,6 +9512,8 @@ void ieee80211_sta_setup_sdata(struct ie
+- 			ieee80211_teardown_ttlm_work);
+- 	wiphy_hrtimer_work_init(&ifmgd->uhr_omp.status_work,
+- 				ieee80211_uhr_omp_req_status_wk);
+-+	wiphy_delayed_work_init(&ifmgd->nullfunc_4addr_work,
+-+				ieee80211_nullfunc_4addr_work);
+- 
+- 	ifmgd->flags = 0;
+- 	ifmgd->powersave = sdata->wdev.ps;
+-@@ -10787,6 +10830,8 @@ void ieee80211_mgd_stop(struct ieee80211
+- 				  &ifmgd->tdls_peer_del_work);
+- 	wiphy_hrtimer_work_cancel(sdata->local->hw.wiphy,
+- 				  &ifmgd->uhr_omp.status_work);
+-+	wiphy_delayed_work_cancel(sdata->local->hw.wiphy,
+-+				  &ifmgd->nullfunc_4addr_work);
+- 
+- 	if (ifmgd->assoc_data)
+- 		ieee80211_destroy_assoc_data(sdata, ASSOC_TIMEOUT);
+---- a/net/mac80211/status.c
+-+++ b/net/mac80211/status.c
+-@@ -753,6 +753,23 @@ ieee80211_handle_uhr_omp_status(struct i
+- 				 us_to_ktime(sdata->u.mgd.uhr_omp.timeout_us));
+- }
+- 
+-+static void
+-+ieee80211_handle_4addr_nullfunc_status(struct ieee80211_sub_if_data *sdata,
+-+				       bool acked)
+-+{
+-+	if (!sdata || !ieee80211_sdata_running(sdata))
+-+		return;
+-+
+-+	if (!acked)
+-+		return;
+-+
+-+	if (sdata->vif.type != NL80211_IFTYPE_STATION)
+-+		return;
+-+
+-+	/* cancelling the retransmit work needs the wiphy mutex */
+-+	WRITE_ONCE(sdata->u.mgd.nullfunc_4addr_acked, true);
+-+}
+-+
+- static void ieee80211_report_used_skb(struct ieee80211_local *local,
+- 				      struct sk_buff *skb, bool dropped,
+- 				      ktime_t ack_hwtstamp)
+-@@ -836,6 +853,9 @@ static void ieee80211_report_used_skb(st
+- 		case IEEE80211_STATUS_TYPE_UHR_OMP:
+- 			ieee80211_handle_uhr_omp_status(sdata, acked);
+- 			break;
+-+		case IEEE80211_STATUS_TYPE_4ADDR_NULLFUNC:
+-+			ieee80211_handle_4addr_nullfunc_status(sdata, acked);
+-+			break;
+- 		}
+- 		rcu_read_unlock();
+- 	}
+diff --git a/package/kernel/mac80211/patches/subsys/396-wifi-mac80211-use-link-address-as-TA-for-non-MLO-4-a.patch b/package/kernel/mac80211/patches/subsys/396-wifi-mac80211-use-link-address-as-TA-for-non-MLO-4-a.patch
+deleted file mode 100644
+index 5a7e1e55..00000000
+--- a/package/kernel/mac80211/patches/subsys/396-wifi-mac80211-use-link-address-as-TA-for-non-MLO-4-a.patch
++++ /dev/null
+@@ -1,127 +0,0 @@
+-From 6175e271b08823a4f9dc2576092cb5752ee61fcf Mon Sep 17 00:00:00 2001
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Wed, 30 Sep 2026 09:04:27 +0200
+-Subject: [PATCH 2/3] wifi: mac80211: use link address as TA for non-MLO 4-addr
+- station on MLD AP
+-
+-A 4-address AP_VLAN always sets A2 to sdata->vif.addr, which on an MLD
+-AP is the AP MLD address. For a non-MLO station, A2 must be the link
+-address it associated to.
+-
+-Use the link address for a non-MLO station in the 4-address case as
+-well, like the AP case already does in ieee80211_build_hdr() and
+-ieee80211_check_fast_xmit(). Share the address selection between both
+-cases and both TX paths.
+-
+-Fixes: 3e0278b717b0 ("wifi: mac80211: select link when transmitting to non-MLO stations")
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+- net/mac80211/tx.c | 68 ++++++++++++++++++++++++++++-------------------
+- 1 file changed, 40 insertions(+), 28 deletions(-)
+-
+---- a/net/mac80211/tx.c
+-+++ b/net/mac80211/tx.c
+-@@ -2620,6 +2620,32 @@ static void ieee80211_remove_ack_skb(str
+- 	kfree_skb(ack_skb);
+- }
+- 
+-+static int ieee80211_ap_tx_addr_get(struct ieee80211_sub_if_data *sdata,
+-+				    struct sta_info *sta, u8 *addr, u8 *link_id)
+-+{
+-+	struct ieee80211_link_data *link;
+-+	int ret = 0;
+-+
+-+	if (!ieee80211_vif_is_mld(&sdata->vif) || sta->sta.mlo) {
+-+		memcpy(addr, sdata->vif.addr, ETH_ALEN);
+-+		return 0;
+-+	}
+-+
+-+	rcu_read_lock();
+-+	link = rcu_dereference(sdata->link[sta->deflink.link_id]);
+-+	if (WARN_ON(!link)) {
+-+		ret = -ENOLINK;
+-+		goto out;
+-+	}
+-+
+-+	memcpy(addr, link->conf->addr, ETH_ALEN);
+-+	if (link_id)
+-+		*link_id = sta->deflink.link_id;
+-+out:
+-+	rcu_read_unlock();
+-+	return ret;
+-+}
+-+
+- /**
+-  * ieee80211_build_hdr - build 802.11 header in the given frame
+-  * @sdata: virtual interface to build the header for
+-@@ -2688,7 +2714,10 @@ static struct sk_buff *ieee80211_build_h
+- 			fc |= cpu_to_le16(IEEE80211_FCTL_FROMDS | IEEE80211_FCTL_TODS);
+- 			/* RA TA DA SA */
+- 			memcpy(hdr.addr1, sta->sta.addr, ETH_ALEN);
+--			memcpy(hdr.addr2, sdata->vif.addr, ETH_ALEN);
+-+			ret = ieee80211_ap_tx_addr_get(sdata, sta, hdr.addr2,
+-+						       &link_id);
+-+			if (ret)
+-+				goto free;
+- 			memcpy(hdr.addr3, skb->data, ETH_ALEN);
+- 			memcpy(hdr.addr4, skb->data + ETH_ALEN, ETH_ALEN);
+- 			hdrlen = 30;
+-@@ -2713,18 +2742,12 @@ static struct sk_buff *ieee80211_build_h
+- 		/* DA BSSID SA */
+- 		memcpy(hdr.addr1, skb->data, ETH_ALEN);
+- 
+--		if (ieee80211_vif_is_mld(&sdata->vif) && sta && !sta->sta.mlo) {
+--			struct ieee80211_link_data *link;
+--
+--			link_id = sta->deflink.link_id;
+--			link = rcu_dereference(sdata->link[link_id]);
+--			if (WARN_ON(!link)) {
+--				ret = -ENOLINK;
+-+		if (sta) {
+-+			ret = ieee80211_ap_tx_addr_get(sdata, sta, hdr.addr2,
+-+						       &link_id);
+-+			if (ret)
+- 				goto free;
+--			}
+--			memcpy(hdr.addr2, link->conf->addr, ETH_ALEN);
+--		} else if (link_id == IEEE80211_LINK_UNSPECIFIED ||
+--			   (sta && sta->sta.mlo)) {
+-+		} else if (link_id == IEEE80211_LINK_UNSPECIFIED) {
+- 			memcpy(hdr.addr2, sdata->vif.addr, ETH_ALEN);
+- 		} else {
+- 			struct ieee80211_bss_conf *conf;
+-@@ -3209,7 +3232,9 @@ void ieee80211_check_fast_xmit(struct st
+- 					  IEEE80211_FCTL_TODS);
+- 			/* RA TA DA SA */
+- 			memcpy(hdr->addr1, sta->sta.addr, ETH_ALEN);
+--			memcpy(hdr->addr2, sdata->vif.addr, ETH_ALEN);
+-+			if (ieee80211_ap_tx_addr_get(sdata, sta, hdr->addr2,
+-+						     NULL))
+-+				goto out;
+- 			build.da_offs = offsetof(struct ieee80211_hdr, addr3);
+- 			build.sa_offs = offsetof(struct ieee80211_hdr, addr4);
+- 			build.hdr_len = 30;
+-@@ -3220,21 +3245,8 @@ void ieee80211_check_fast_xmit(struct st
+- 		fc |= cpu_to_le16(IEEE80211_FCTL_FROMDS);
+- 		/* DA BSSID SA */
+- 		build.da_offs = offsetof(struct ieee80211_hdr, addr1);
+--		if (sta->sta.mlo || !ieee80211_vif_is_mld(&sdata->vif)) {
+--			memcpy(hdr->addr2, sdata->vif.addr, ETH_ALEN);
+--		} else {
+--			unsigned int link_id = sta->deflink.link_id;
+--			struct ieee80211_link_data *link;
+--
+--			rcu_read_lock();
+--			link = rcu_dereference(sdata->link[link_id]);
+--			if (WARN_ON(!link)) {
+--				rcu_read_unlock();
+--				goto out;
+--			}
+--			memcpy(hdr->addr2, link->conf->addr, ETH_ALEN);
+--			rcu_read_unlock();
+--		}
+-+		if (ieee80211_ap_tx_addr_get(sdata, sta, hdr->addr2, NULL))
+-+			goto out;
+- 		build.sa_offs = offsetof(struct ieee80211_hdr, addr3);
+- 		build.hdr_len = 24;
+- 		break;
+diff --git a/package/kernel/mac80211/patches/subsys/397-wifi-mac80211-use-the-AP-address-as-RA-for-a-4-addr-.patch b/package/kernel/mac80211/patches/subsys/397-wifi-mac80211-use-the-AP-address-as-RA-for-a-4-addr-.patch
+deleted file mode 100644
+index 89f1231a..00000000
+--- a/package/kernel/mac80211/patches/subsys/397-wifi-mac80211-use-the-AP-address-as-RA-for-a-4-addr-.patch
++++ /dev/null
+@@ -1,38 +0,0 @@
+-From d7034f6fd7b0630f3d70ff9c121a648cb636301b Mon Sep 17 00:00:00 2001
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Wed, 30 Sep 2026 10:00:10 +0200
+-Subject: [PATCH 3/3] wifi: mac80211: use the AP address as RA for a 4-addr MLO
+- station
+-
+-In 4-address mode, ieee80211_build_hdr() and ieee80211_check_fast_xmit()
+-set A1 to sdata->deflink.u.mgd.bssid, which is not valid for an MLO
+-connection.
+-
+-Use sdata->vif.cfg.ap_addr instead, like the 3-address case does.
+-
+-Fixes: 8a9be422f5ff ("wifi: mac80211: tx: use AP address in some places for MLO")
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+- net/mac80211/tx.c | 4 ++--
+- 1 file changed, 2 insertions(+), 2 deletions(-)
+-
+---- a/net/mac80211/tx.c
+-+++ b/net/mac80211/tx.c
+-@@ -2863,7 +2863,7 @@ static struct sk_buff *ieee80211_build_h
+- 			fc |= cpu_to_le16(IEEE80211_FCTL_FROMDS |
+- 					  IEEE80211_FCTL_TODS);
+- 			/* RA TA DA SA */
+--			memcpy(hdr.addr1, sdata->deflink.u.mgd.bssid, ETH_ALEN);
+-+			memcpy(hdr.addr1, sdata->vif.cfg.ap_addr, ETH_ALEN);
+- 			memcpy(hdr.addr2, sdata->vif.addr, ETH_ALEN);
+- 			memcpy(hdr.addr3, skb->data, ETH_ALEN);
+- 			memcpy(hdr.addr4, skb->data + ETH_ALEN, ETH_ALEN);
+-@@ -3212,7 +3212,7 @@ void ieee80211_check_fast_xmit(struct st
+- 			fc |= cpu_to_le16(IEEE80211_FCTL_FROMDS |
+- 					  IEEE80211_FCTL_TODS);
+- 			/* RA TA DA SA */
+--			memcpy(hdr->addr1, sdata->deflink.u.mgd.bssid, ETH_ALEN);
+-+			memcpy(hdr->addr1, sdata->vif.cfg.ap_addr, ETH_ALEN);
+- 			memcpy(hdr->addr2, sdata->vif.addr, ETH_ALEN);
+- 			build.da_offs = offsetof(struct ieee80211_hdr, addr3);
+- 			build.sa_offs = offsetof(struct ieee80211_hdr, addr4);
+diff --git a/package/kernel/mac80211/patches/subsys/398-wifi-mac80211_hwsim-restore-MLD-addresses-before-rep.patch b/package/kernel/mac80211/patches/subsys/398-wifi-mac80211_hwsim-restore-MLD-addresses-before-rep.patch
+deleted file mode 100644
+index 23170261..00000000
+--- a/package/kernel/mac80211/patches/subsys/398-wifi-mac80211_hwsim-restore-MLD-addresses-before-rep.patch
++++ /dev/null
+@@ -1,159 +0,0 @@
+-From 77a5e8cfa2024f17ba9020e53a668417d06fa13a Mon Sep 17 00:00:00 2001
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Wed, 30 Sep 2026 12:31:19 +0200
+-Subject: [PATCH 5/5] wifi: mac80211_hwsim: restore MLD addresses before
+- reporting TX status
+-
+-For a frame to an MLO station, mac80211_hwsim_tx() rewrites A1, A2 and
+-possibly A3 of the frame to link addresses, and then reports the TX
+-status on the same skb. ieee80211_tx_status_skb() looks up the station
+-by A1 and A2, which are now link addresses, and finds none. mac80211
+-then records no ACK, retry, lost frame or last TX rate for the station.
+-
+-Put the original addresses back before the TX status is reported. For
+-frames sent via wmediumd, keep them in the driver data of the frame
+-until the status arrives. An all-zero A1 marks a frame without rewrite.
+-
+-[Backports 7.2 has no link ID in the TX status, so this goes without the
+-patch that reports it, and the driver data of a frame holds no link ID.]
+-
+-Fixes: 2ab60f49eb4d ("wifi: mac80211_hwsim: use MLO link ID for TX")
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+---- a/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+-+++ b/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+-@@ -1643,15 +1643,41 @@ static void mac80211_hwsim_write_tsf(str
+- 	spin_unlock_bh(&data->tsf_offset_lock);
+- }
+- 
+-+struct hwsim_tx_cb {
+-+	int cookie;
+-+	u8 orig_addrs[sizeof_field(struct ieee80211_hdr, addrs)];
+-+};
+-+
+-+static struct hwsim_tx_cb *hwsim_tx_cb(struct sk_buff *skb)
+-+{
+-+	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
+-+
+-+	BUILD_BUG_ON(sizeof(struct hwsim_tx_cb) >
+-+		     sizeof(info->rate_driver_data));
+-+	return (void *)info->rate_driver_data;
+-+}
+-+
+-+static void hwsim_tx_addrs_restore(struct sk_buff *skb, const u8 *orig_addrs)
+-+{
+-+	struct ieee80211_hdr *hdr = (void *)skb->data;
+-+
+-+	if (is_zero_ether_addr(orig_addrs))
+-+		return;
+-+
+-+	memcpy(&hdr->addrs, orig_addrs, sizeof(hdr->addrs));
+-+}
+-+
+- static void mac80211_hwsim_tx_frame_nl(struct ieee80211_hw *hw,
+- 				       struct sk_buff *my_skb,
+- 				       int dst_portid,
+--				       struct ieee80211_channel *channel)
+-+				       struct ieee80211_channel *channel,
+-+				       const u8 *orig_addrs)
+- {
+- 	struct sk_buff *skb;
+- 	struct mac80211_hwsim_data *data = hw->priv;
+- 	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *) my_skb->data;
+- 	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(my_skb);
+-+	struct hwsim_tx_cb *cb;
+- 	void *msg_head;
+- 	unsigned int hwsim_flags = 0;
+- 	int i;
+-@@ -1731,7 +1757,12 @@ static void mac80211_hwsim_tx_frame_nl(s
+- 
+- 	/* We create a cookie to identify this skb */
+- 	cookie = atomic_inc_return(&data->pending_cookie);
+--	info->rate_driver_data[0] = (void *)cookie;
+-+	cb = hwsim_tx_cb(my_skb);
+-+	cb->cookie = cookie;
+-+	if (orig_addrs)
+-+		memcpy(cb->orig_addrs, orig_addrs, sizeof(cb->orig_addrs));
+-+	else
+-+		memset(cb->orig_addrs, 0, sizeof(cb->orig_addrs));
+- 	if (nla_put_u64_64bit(skb, HWSIM_ATTR_COOKIE, cookie, HWSIM_ATTR_PAD))
+- 		goto nla_put_failure;
+- 
+-@@ -2107,6 +2138,7 @@ static void mac80211_hwsim_tx(struct iee
+- {
+- 	struct mac80211_hwsim_data *data = hw->priv;
+- 	struct ieee80211_tx_info *txi = IEEE80211_SKB_CB(skb);
+-+	u8 orig_addrs[sizeof_field(struct ieee80211_hdr, addrs)] = {};
+- 	struct ieee80211_hdr *hdr = (void *)skb->data;
+- 	struct ieee80211_chanctx_conf *chanctx_conf;
+- 	struct ieee80211_channel *channel;
+-@@ -2190,6 +2222,8 @@ static void mac80211_hwsim_tx(struct iee
+- 		 * probe response).
+- 		 */
+- 		if (sta && sta->mlo && link_sta) {
+-+			memcpy(orig_addrs, &hdr->addrs, sizeof(orig_addrs));
+-+
+- 			/* address translation to link addresses on TX */
+- 			ether_addr_copy(hdr->addr1, link_sta->addr);
+- 			ether_addr_copy(hdr->addr2, bss_conf->addr);
+-@@ -2264,7 +2298,8 @@ static void mac80211_hwsim_tx(struct iee
+- 	_portid = READ_ONCE(data->wmediumd);
+- 
+- 	if (_portid || hwsim_virtio_enabled)
+--		return mac80211_hwsim_tx_frame_nl(hw, skb, _portid, channel);
+-+		return mac80211_hwsim_tx_frame_nl(hw, skb, _portid, channel,
+-+						  orig_addrs);
+- 
+- 	/* NO wmediumd detected, perfect medium simulation */
+- 	data->tx_pkts++;
+-@@ -2274,6 +2309,7 @@ static void mac80211_hwsim_tx(struct iee
+- 	if (ack && skb->len >= 16)
+- 		mac80211_hwsim_monitor_ack(channel, hdr->addr2);
+- 
+-+	hwsim_tx_addrs_restore(skb, orig_addrs);
+- 	ieee80211_tx_info_clear_status(txi);
+- 
+- 	/* frame was transmitted at most favorable rate at first attempt */
+-@@ -2410,7 +2446,7 @@ void mac80211_hwsim_tx_frame(struct ieee
+- 	}
+- 
+- 	if (_portid || hwsim_virtio_enabled)
+--		return mac80211_hwsim_tx_frame_nl(hw, skb, _portid, chan);
+-+		return mac80211_hwsim_tx_frame_nl(hw, skb, _portid, chan, NULL);
+- 
+- 	data->tx_pkts++;
+- 	data->tx_bytes += skb->len;
+-@@ -6339,6 +6375,7 @@ static int hwsim_tx_info_frame_received_
+- 	u64 ret_skb_cookie;
+- 	struct sk_buff *skb, *tmp;
+- 	const u8 *src;
+-+	struct hwsim_tx_cb tx_cb;
+- 	unsigned int hwsim_flags;
+- 	int i;
+- 	unsigned long flags;
+-@@ -6373,8 +6410,7 @@ static int hwsim_tx_info_frame_received_
+- 	skb_queue_walk_safe(&data2->pending, skb, tmp) {
+- 		uintptr_t skb_cookie;
+- 
+--		txi = IEEE80211_SKB_CB(skb);
+--		skb_cookie = (uintptr_t)txi->rate_driver_data[0];
+-+		skb_cookie = (uintptr_t)hwsim_tx_cb(skb)->cookie;
+- 
+- 		if (skb_cookie == ret_skb_cookie) {
+- 			__skb_unlink(skb, &data2->pending);
+-@@ -6398,6 +6434,7 @@ static int hwsim_tx_info_frame_received_
+- 
+- 	/* now send back TX status */
+- 	txi = IEEE80211_SKB_CB(skb);
+-+	tx_cb = *hwsim_tx_cb(skb);
+- 
+- 	ieee80211_tx_info_clear_status(txi);
+- 
+-@@ -6421,6 +6458,7 @@ static int hwsim_tx_info_frame_received_
+- 	if (hwsim_flags & HWSIM_TX_CTL_NO_ACK)
+- 		txi->flags |= IEEE80211_TX_STAT_NOACK_TRANSMITTED;
+- 
+-+	hwsim_tx_addrs_restore(skb, tx_cb.orig_addrs);
+- 	ieee80211_tx_status_irqsafe(data2->hw, skb);
+- 	return 0;
+- out:
+diff --git a/package/kernel/mac80211/patches/subsys/399-wifi-mac80211-look-up-the-AP-station-by-the-AP-MLD-add.patch b/package/kernel/mac80211/patches/subsys/399-wifi-mac80211-look-up-the-AP-station-by-the-AP-MLD-add.patch
+deleted file mode 100644
+index 5d10a551..00000000
+--- a/package/kernel/mac80211/patches/subsys/399-wifi-mac80211-look-up-the-AP-station-by-the-AP-MLD-add.patch
++++ /dev/null
+@@ -1,58 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Mon, 08 Sep 2026 03:40:00 +0000
+-Subject: [PATCH] wifi: mac80211: look up the AP station by the AP MLD address
+-
+-A station interface stores the station of its AP under
+-vif.cfg.ap_addr, which holds the BSSID for a non-MLO association and the
+-AP MLD address for an MLO one. Three lookups use
+-sdata->deflink.u.mgd.bssid instead. ieee80211_vif_update_links() uses
+-the default link if and only if the interface has no valid links, so an
+-MLO association writes the BSSID into separate link data, and
+-sdata->deflink.u.mgd.bssid stays at the zero address.
+-
+-For an MLO association, these lookups find no station:
+-
+-- the 4-address change in ieee80211_change_iface(), which then never
+-  tells the driver to enable 4-address mode;
+-- ieee80211_netdev_fill_forward_path(), which then reports no path and
+-  silently disables hardware flow offload;
+-- ieee80211_get_stats(), which then falls back to survey only
+-  statistics.
+-
+-Look up the station by vif.cfg.ap_addr, which is correct in both cases.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+---- a/net/mac80211/cfg.c
+-+++ b/net/mac80211/cfg.c
+-@@ -285,7 +285,7 @@ static int ieee80211_change_iface(struct
+- 		if (!ifmgd->associated)
+- 			return 0;
+- 
+--		sta = sta_info_get(sdata, sdata->deflink.u.mgd.bssid);
+-+		sta = sta_info_get(sdata, sdata->vif.cfg.ap_addr);
+- 		if (sta)
+- 			drv_sta_set_4addr(local, sdata, &sta->sta,
+- 					  params->use_4addr);
+---- a/net/mac80211/iface.c
+-+++ b/net/mac80211/iface.c
+-@@ -1028,7 +1028,7 @@ static int ieee80211_netdev_fill_forward
+- 			}
+- 		}
+- 
+--		sta = sta_info_get(sdata, sdata->deflink.u.mgd.bssid);
+-+		sta = sta_info_get(sdata, sdata->vif.cfg.ap_addr);
+- 		break;
+- 	default:
+- 		goto out;
+---- a/net/mac80211/ethtool.c
+-+++ b/net/mac80211/ethtool.c
+-@@ -109,7 +109,7 @@ static void ieee80211_get_stats(struct n
+- 	guard(wiphy)(local->hw.wiphy);
+- 
+- 	if (sdata->vif.type == NL80211_IFTYPE_STATION) {
+--		sta = sta_info_get_bss(sdata, sdata->deflink.u.mgd.bssid);
+-+		sta = sta_info_get_bss(sdata, sdata->vif.cfg.ap_addr);
+- 
+- 		if (!(sta && !WARN_ON(sta->sdata->dev != dev)))
+- 			goto do_survey;
+diff --git a/package/kernel/mac80211/patches/subsys/400-wifi-mac80211-match-a-channel-switch-action-against-t.patch b/package/kernel/mac80211/patches/subsys/400-wifi-mac80211-match-a-channel-switch-action-against-t.patch
+deleted file mode 100644
+index 85d06744..00000000
+--- a/package/kernel/mac80211/patches/subsys/400-wifi-mac80211-match-a-channel-switch-action-against-t.patch
++++ /dev/null
+@@ -1,28 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Mon, 08 Sep 2026 06:00:00 +0000
+-Subject: [PATCH] wifi: mac80211: match a channel switch action against the
+- receiving link
+-
+-ieee80211_rx_h_action() compares the BSSID of an extended channel switch
+-announcement against sdata->deflink.u.mgd.bssid. An MLO association does
+-not use the default link, so that field holds the zero address and the
+-frame is never queued.
+-
+-Use the BSSID of the link the frame arrived on. ieee80211_rx_data_set_sta()
+-always sets rx->link, and for a non-MLO association it points at the
+-default link, so this keeps the current behaviour there.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+-
+---- a/net/mac80211/rx.c
+-+++ b/net/mac80211/rx.c
+-@@ -3731,7 +3731,7 @@ ieee80211_rx_h_action(struct ieee80211_r
+- 			break;
+- 		if (!rx->sta)
+- 			break;
+--		if (!ether_addr_equal(mgmt->bssid, sdata->deflink.u.mgd.bssid))
+-+		if (!ether_addr_equal(mgmt->bssid, rx->link->u.mgd.bssid))
+- 			break;
+- 		if (mgmt->u.action.action_code !=
+- 				WLAN_PUB_ACTION_EXT_CHANSW_ANN)
+diff --git a/package/kernel/mac80211/patches/subsys/401-wifi-mac80211-report-the-BSSID-of-each-link-in-debugf.patch b/package/kernel/mac80211/patches/subsys/401-wifi-mac80211-report-the-BSSID-of-each-link-in-debugf.patch
+deleted file mode 100644
+index 724bf0c0..00000000
+--- a/package/kernel/mac80211/patches/subsys/401-wifi-mac80211-report-the-BSSID-of-each-link-in-debugf.patch
++++ /dev/null
+@@ -1,41 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Mon, 08 Sep 2026 06:10:00 +0000
+-Subject: [PATCH] wifi: mac80211: report the BSSID of each link in debugfs
+-
+-The bssid file of a station interface reports the default link. An MLO
+-association keeps a BSSID per link and never uses the default link, so
+-the file reads as the zero address and gives no way to tell which BSSID
+-belongs to which link.
+-
+-Add a bssid file to each link directory. The link directories already
+-carry the local address of the link, so this completes the pair.
+-
+-Add it in ieee80211_link_debugfs_add() rather than in add_link_files().
+-The latter also runs for the default link with the netdev directory,
+-where a bssid file already exists.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+-
+---- a/net/mac80211/debugfs_netdev.c
+-+++ b/net/mac80211/debugfs_netdev.c
+-@@ -735,6 +735,7 @@ static ssize_t ieee80211_if_parse_active
+- IEEE80211_IF_FILE_RW(active_links);
+- 
+- IEEE80211_IF_LINK_FILE(addr, conf->addr, MAC);
+-+IEEE80211_IF_LINK_FILE(link_bssid, u.mgd.bssid, MAC);
+- 
+- #ifdef CPTCFG_MAC80211_MESH
+- IEEE80211_IF_FILE(estab_plinks, u.mesh.estab_plinks, ATOMIC);
+-@@ -1060,6 +1061,11 @@ void ieee80211_link_debugfs_add(struct i
+- 				   link->sdata->vif.debugfs_dir);
+- 
+- 	DEBUGFS_ADD(link->debugfs_dir, addr);
+-+
+-+	if (link->sdata->vif.type == NL80211_IFTYPE_STATION)
+-+		debugfs_create_file("bssid", 0400, link->debugfs_dir, link,
+-+				    &link_link_bssid_ops);
+-+
+- 	add_link_files(link, link->debugfs_dir);
+- }
+- 
+diff --git a/package/kernel/mac80211/patches/subsys/402-wifi-mac80211_hwsim-reserve-headroom-for-software-encryp.patch b/package/kernel/mac80211/patches/subsys/402-wifi-mac80211_hwsim-reserve-headroom-for-software-encryp.patch
+deleted file mode 100644
+index 4a9b4c23..00000000
+--- a/package/kernel/mac80211/patches/subsys/402-wifi-mac80211_hwsim-reserve-headroom-for-software-encryp.patch
++++ /dev/null
+@@ -1,33 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Sat, 26 Sep 2026 14:00:00 +0200
+-Subject: [PATCH] wifi: mac80211_hwsim: reserve headroom for software encryption
+-
+-mac80211_hwsim accepts CCMP and GCMP keys in mac80211_hwsim_set_key()
+-and encrypts unicast data frames itself in mac80211_hwsim_tx(), through
+-ieee80211_encrypt_tx_skb(). It asks mac80211 to reserve tailroom for the
+-MIC, but not headroom for the CCMP or GCMP header.
+-
+-For a hardware key without IEEE80211_KEY_FLAG_GENERATE_IV or
+-IEEE80211_KEY_FLAG_PUT_IV_SPACE, ieee80211_xmit_fast() resizes the frame
+-with ENCRYPT_NO and reserves only the 802.11 header and
+-hw.extra_tx_headroom. A locally generated frame usually has room to
+-spare, but a frame forwarded from a bridge can arrive with none. The
+-room check in ccmp_encrypt_skb() then warns, ieee80211_encrypt_tx_skb()
+-returns an error and the frame is freed. An access point that bridges
+-traffic to its clients sends no downlink unicast data at all.
+-
+-Reserve the header as driver headroom. IEEE80211_CCMP_HDR_LEN,
+-IEEE80211_CCMP_256_HDR_LEN and IEEE80211_GCMP_HDR_LEN are all 8 bytes.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+---- a/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+-+++ b/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+-@@ -5913,6 +5913,7 @@ static int mac80211_hwsim_new_radio(stru
+- 
+- 	hw->queues = 5;
+- 	hw->offchannel_tx_hw_queue = 4;
+-+	hw->extra_tx_headroom = IEEE80211_CCMP_HDR_LEN;
+- 
+- 	ieee80211_hw_set(hw, SUPPORT_FAST_XMIT);
+- 	ieee80211_hw_set(hw, CHANCTX_STA_CSA);
+diff --git a/package/kernel/mac80211/patches/subsys/403-wifi-mac80211-find-the-sender-of-a-data-frame-by-its-link-address.patch b/package/kernel/mac80211/patches/subsys/403-wifi-mac80211-find-the-sender-of-a-data-frame-by-its-link-address.patch
+deleted file mode 100644
+index 030f820c..00000000
+--- a/package/kernel/mac80211/patches/subsys/403-wifi-mac80211-find-the-sender-of-a-data-frame-by-its-link-address.patch
++++ /dev/null
+@@ -1,81 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Thu, 8 Oct 2026 12:00:00 +0200
+-Subject: [PATCH] wifi: mac80211: find the sender of a data frame by its link
+- address
+-
+-__ieee80211_rx_handle_packet() looks up the sender of a data frame by
+-addr2 in the station hash, which holds the MLD address of an MLO
+-station. When a driver neither passes the station nor translates the
+-addresses, a data frame of an MLO station carries a link address in
+-addr2 and the lookup fails. The frame then goes through the
+-per-interface loop, which skips AP_VLAN interfaces. For an MLO station
+-that hostapd moved to an AP_VLAN, ieee80211_rx_h_data() thus drops
+-every 4-address data frame on the AP interface as unexpected.
+-
+-If the station hash has no match, look up the sender in the link
+-station hash and hand the frame to the interface of that station, as
+-the station hash path does. Data frames of an MLO station then no
+-longer go through the per-interface loop.
+-
+-Upstream fixed this as part of commit 6d531b9af16e ("wifi: mac80211:
+-rework RX packet handling"), which depends on a change of the driver RX
+-API.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+---- a/net/mac80211/rx.c
+-+++ b/net/mac80211/rx.c
+-@@ -5362,6 +5362,17 @@ static bool ieee80211_rx_for_interface(s
+- 	return ieee80211_prepare_and_rx_handle(rx, skb, consume);
+- }
+- 
+-+static bool ieee80211_rx_for_link_sta(struct ieee80211_rx_data *rx,
+-+				      struct link_sta_info *link_sta,
+-+				      struct sk_buff *skb, bool consume)
+-+{
+-+	rx->sdata = link_sta->sta->sdata;
+-+	if (!ieee80211_rx_data_set_sta(rx, link_sta->sta, link_sta->link_id))
+-+		return false;
+-+
+-+	return ieee80211_prepare_and_rx_handle(rx, skb, consume);
+-+}
+-+
+- /*
+-  * This is the actual Rx frames handler. as it belongs to Rx path it must
+-  * be called with rcu_read_lock protection.
+-@@ -5427,6 +5438,7 @@ static void __ieee80211_rx_handle_packet
+- 		ieee80211_scan_rx(local, skb);
+- 
+- 	if (ieee80211_is_data(fc)) {
+-+		struct link_sta_info *link_sta, *prev_link_sta;
+- 		struct sta_info *sta, *prev_sta;
+- 		int link_id = -1;
+- 
+-@@ -5512,6 +5524,27 @@ static void __ieee80211_rx_handle_packet
+- 				return;
+- 			goto out;
+- 		}
+-+
+-+		prev_link_sta = NULL;
+-+
+-+		for_each_link_sta_info(local, hdr->addr2, link_sta, tmp) {
+-+			if (!prev_link_sta) {
+-+				prev_link_sta = link_sta;
+-+				continue;
+-+			}
+-+
+-+			ieee80211_rx_for_link_sta(&rx, prev_link_sta, skb,
+-+						  false);
+-+
+-+			prev_link_sta = link_sta;
+-+		}
+-+
+-+		if (prev_link_sta) {
+-+			if (ieee80211_rx_for_link_sta(&rx, prev_link_sta, skb,
+-+						      true))
+-+				return;
+-+			goto out;
+-+		}
+- 	}
+- 
+- 	prev = NULL;
+diff --git a/package/kernel/mac80211/patches/subsys/404-wifi-mac80211_hwsim-keep-radar-detection-on-a-multi-radio.patch b/package/kernel/mac80211/patches/subsys/404-wifi-mac80211_hwsim-keep-radar-detection-on-a-multi-radio.patch
+deleted file mode 100644
+index 38407109..00000000
+--- a/package/kernel/mac80211/patches/subsys/404-wifi-mac80211_hwsim-keep-radar-detection-on-a-multi-radio.patch
++++ /dev/null
+@@ -1,44 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Sat, 26 Sep 2026 22:00:00 +0200
+-Subject: [PATCH] wifi: mac80211_hwsim: keep radar detection on a multi-radio wiphy
+-
+-A radio that uses channel contexts gets no radar detection widths in its
+-global interface combination, because DFS requires a combination with a
+-single channel. A multi-radio radio always uses channel contexts, and
+-its global combination multiplies the channel count by the number of
+-radios. So it loses the radar detection widths as well, while each
+-per-radio combination keeps them.
+-
+-mac80211 checks the channel of a radar detection against the global
+-combination (ieee80211_check_combinations() with radio_idx -1 from
+-_ieee80211_link_use_channel()). No combination matches, and every CAC on
+-a multi-radio hwsim radio fails. hostapd reports it as "start_dfs_cac()
+-failed" and disables the interface.
+-
+-cfg80211 exempts the global combination of a multi-radio wiphy from the
+-single channel rule for DFS (wiphy_verify_iface_combinations()), since
+-it only sums up the radios. Keep the radar detection widths there when
+-each radio has one channel. With more than one channel per radio, clear
+-them in the per-radio combination too, which cfg80211 would refuse
+-otherwise.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+---- a/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+-+++ b/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+-@@ -6099,8 +6099,14 @@ static int mac80211_hwsim_new_radio(stru
+- 		data->if_combination.num_different_channels *= n_bands;
+- 	}
+- 
+--	if (data->use_chanctx)
+-+	/*
+-+	 * DFS needs a single channel per combination. cfg80211 exempts the
+-+	 * global combination of a multi-radio wiphy.
+-+	 */
+-+	if (data->use_chanctx && (!param->multi_radio || data->channels > 1)) {
+- 		data->if_combination.radar_detect_widths = 0;
+-+		data->if_combination_radio.radar_detect_widths = 0;
+-+	}
+- 
+- 	/* By default all radios belong to the first group */
+- 	data->group = 1;
+diff --git a/package/kernel/mac80211/patches/subsys/405-wifi-mac80211-report-the-combination-error-when-NAN-e.patch b/package/kernel/mac80211/patches/subsys/405-wifi-mac80211-report-the-combination-error-when-NAN-e.patch
+deleted file mode 100644
+index 5a942dcf..00000000
+--- a/package/kernel/mac80211/patches/subsys/405-wifi-mac80211-report-the-combination-error-when-NAN-e.patch
++++ /dev/null
+@@ -1,35 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Sat, 26 Sep 2026 22:05:00 +0200
+-Subject: [PATCH] wifi: mac80211: report the combination error when NAN evacuation fails
+-
+-When ieee80211_check_combinations() refuses a channel,
+-_ieee80211_link_use_channel() tries to evacuate a NAN channel and then
+-returns the result of that attempt. Without a NAN interface the attempt
+-returns -ENOENT, so a refused interface combination reaches userspace as
+-"No such file or directory" instead of the error of the check.
+-
+-Keep the error of the combination check when the evacuation does not
+-help.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+---- a/net/mac80211/chan.c
+-+++ b/net/mac80211/chan.c
+-@@ -2305,12 +2305,12 @@ int _ieee80211_link_use_channel(struct i
+- 					   radar_detect_width, -1);
+- 	if (ret < 0) {
+- 		/* Let's check if evacuating a NAN channel will help */
+--		ret = ieee80211_try_nan_chan_evacuation(local, sdata,
+--							&chanreq->oper,
+--							mode,
+--							radar_detect_width);
+--		if (ret < 0)
+-+		if (ieee80211_try_nan_chan_evacuation(local, sdata,
+-+						      &chanreq->oper,
+-+						      mode,
+-+						      radar_detect_width) < 0)
+- 			goto out;
+-+		ret = 0;
+- 	}
+- 
+- 	if (!local->in_reconfig)
+diff --git a/package/kernel/mac80211/patches/subsys/406-wifi-mac80211_hwsim-declare-the-MLD-capabilities-of-a-station.patch b/package/kernel/mac80211/patches/subsys/406-wifi-mac80211_hwsim-declare-the-MLD-capabilities-of-a-station.patch
+deleted file mode 100644
+index 575b5d92..00000000
+--- a/package/kernel/mac80211/patches/subsys/406-wifi-mac80211_hwsim-declare-the-MLD-capabilities-of-a-station.patch
++++ /dev/null
+@@ -1,52 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Sun, 27 Sep 2026 22:00:00 +0200
+-Subject: [PATCH] wifi: mac80211_hwsim: declare the MLD capabilities of a station
+-
+-An MLO radio declares extended capabilities, EML capabilities and MLD
+-capabilities for the AP interface type only. A station interface of the
+-same radio then reports no simultaneous links, and userspace that reads
+-the station's MLD capabilities from the wiphy describes an MLO station
+-as supporting no simultaneous transmit and receive.
+-
+-Declare the station interface type as well, with the extended
+-capabilities of the AP entry except the TWT responder bit and the same
+-maximum number of simultaneous links, and no EML capabilities.
+-
+-ieee80211_add_ml_elem() takes the MLD Capabilities of the Association
+-Request from this entry, so an MLO station of hwsim now announces that
+-maximum number of simultaneous links instead of 0.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+---- a/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+-+++ b/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+-@@ -5665,6 +5665,14 @@ static const u8 iftypes_ext_capa_ap[] =
+- 	 [9] = WLAN_EXT_CAPA10_TWT_RESPONDER_SUPPORT,
+- };
+- 
+-+static const u8 iftypes_ext_capa_sta[] = {
+-+	 [0] = WLAN_EXT_CAPA1_EXT_CHANNEL_SWITCHING,
+-+	 [2] = WLAN_EXT_CAPA3_MULTI_BSSID_SUPPORT,
+-+	 [7] = WLAN_EXT_CAPA8_OPMODE_NOTIF |
+-+	       WLAN_EXT_CAPA8_MAX_MSDU_IN_AMSDU_LSB,
+-+	 [8] = WLAN_EXT_CAPA9_MAX_MSDU_IN_AMSDU_MSB,
+-+};
+-+
+- #define MAC80211_HWSIM_MLD_CAPA_OPS				\
+- 	FIELD_PREP_CONST(IEEE80211_MLD_CAP_OP_TID_TO_LINK_MAP_NEG_SUPP, \
+- 			 IEEE80211_MLD_CAP_OP_TID_TO_LINK_MAP_NEG_SUPP_SAME) | \
+-@@ -5680,6 +5688,14 @@ static const struct wiphy_iftype_ext_cap
+- 		.eml_capabilities = IEEE80211_EML_CAP_EMLSR_SUPP |
+- 				    IEEE80211_EML_CAP_EMLMR_SUPPORT,
+- 		.mld_capa_and_ops = MAC80211_HWSIM_MLD_CAPA_OPS,
+-+	}, {
+-+		.iftype = NL80211_IFTYPE_STATION,
+-+		.extended_capabilities = iftypes_ext_capa_sta,
+-+		.extended_capabilities_mask = iftypes_ext_capa_sta,
+-+		.extended_capabilities_len = sizeof(iftypes_ext_capa_sta),
+-+		.mld_capa_and_ops =
+-+			FIELD_PREP_CONST(IEEE80211_MLD_CAP_OP_MAX_SIMUL_LINKS,
+-+					 IEEE80211_MLD_MAX_NUM_LINKS - 1),
+- 	},
+- };
+- 
+diff --git a/package/kernel/mac80211/patches/subsys/407-wifi-mac80211_hwsim-send-a-frame-with-no-rate-at-the-peer-s-highest-rate.patch b/package/kernel/mac80211/patches/subsys/407-wifi-mac80211_hwsim-send-a-frame-with-no-rate-at-the-peer-s-highest-rate.patch
+deleted file mode 100644
+index 663e5dfa..00000000
+--- a/package/kernel/mac80211/patches/subsys/407-wifi-mac80211_hwsim-send-a-frame-with-no-rate-at-the-peer-s-highest-rate.patch
++++ /dev/null
+@@ -1,180 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Sun, 27 Sep 2026 23:45:00 +0200
+-Subject: [PATCH] wifi: mac80211_hwsim: send a frame with no rate at the peer's highest rate
+-
+-An MLO radio declares HAS_RATE_CONTROL, so mac80211 picks no rate for a
+-frame and leaves the rate entries as the TX info was cleared, with no
+-attempt count. hwsim then reports a TX status with no rate, mac80211
+-records no last TX rate, and an MLD station reports no TX bit rate at
+-all. A medium in userspace delivers the frame at the lowest rate.
+-
+-Send such a frame at the first attempt. For a data frame to a peer, take
+-the highest rate a TX status can express that the peer receives on the
+-channel width in use: the highest VHT MCS of its highest stream count
+-outside 2.4 GHz, else the highest HT MCS, as a rate controller would
+-settle on for an ideal channel. Both stop at four streams, the most
+-minstrel_ht uses (MINSTREL_MAX_STREAMS) and the most the airtime
+-estimate of a VHT or HT rate handles: ieee80211_get_rate_duration()
+-warns above that. Other frames go at the highest legacy
+-rate of the band. End the list after that entry: the medium hands the
+-entries back as the TX status, and ieee80211_tx_get_rates() stops at a
+-negative index only, so it took the last cleared entry, with no attempt
+-count, as the rate.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+---- a/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+-+++ b/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+-@@ -2132,6 +2132,124 @@ static int mac80211_hwsim_set_key(struct
+- 	return 0;
+- }
+- 
+-+static enum ieee80211_sta_rx_bandwidth
+-+mac80211_hwsim_chan_width_bw(enum nl80211_chan_width width)
+-+{
+-+	switch (width) {
+-+	case NL80211_CHAN_WIDTH_40:
+-+		return IEEE80211_STA_RX_BW_40;
+-+	case NL80211_CHAN_WIDTH_80:
+-+		return IEEE80211_STA_RX_BW_80;
+-+	case NL80211_CHAN_WIDTH_80P80:
+-+	case NL80211_CHAN_WIDTH_160:
+-+	case NL80211_CHAN_WIDTH_320:
+-+		return IEEE80211_STA_RX_BW_160;
+-+	default:
+-+		return IEEE80211_STA_RX_BW_20;
+-+	}
+-+}
+-+
+-+/* The highest VHT MCS the peer receives on nss streams, or -1 for none. */
+-+static int mac80211_hwsim_vht_mcs(struct ieee80211_link_sta *peer, u8 nss,
+-+				  enum ieee80211_sta_rx_bandwidth bw)
+-+{
+-+	u16 map = le16_to_cpu(peer->vht_cap.vht_mcs.rx_mcs_map);
+-+	u8 support = (map >> (2 * (nss - 1))) & 3;
+-+
+-+	if (support == IEEE80211_VHT_MCS_NOT_SUPPORTED)
+-+		return -1;
+-+
+-+	/* VHT MCS 9 at 20 MHz is valid for 3 and 6 streams only */
+-+	if (support == IEEE80211_VHT_MCS_SUPPORT_0_9 &&
+-+	    bw == IEEE80211_STA_RX_BW_20 && nss != 3 && nss != 6)
+-+		return 8;
+-+
+-+	return 7 + support;
+-+}
+-+
+-+static bool mac80211_hwsim_tx_vht(struct ieee80211_tx_rate *rate,
+-+				  struct ieee80211_link_sta *peer,
+-+				  enum ieee80211_sta_rx_bandwidth bw)
+-+{
+-+	u8 nss;
+-+
+-+	for (nss = clamp_t(u8, peer->rx_nss, 1, 4); nss; nss--) {
+-+		int mcs = mac80211_hwsim_vht_mcs(peer, nss, bw);
+-+
+-+		if (mcs < 0)
+-+			continue;
+-+
+-+		rate->flags = IEEE80211_TX_RC_VHT_MCS;
+-+		if (bw == IEEE80211_STA_RX_BW_40)
+-+			rate->flags |= IEEE80211_TX_RC_40_MHZ_WIDTH;
+-+		else if (bw == IEEE80211_STA_RX_BW_80)
+-+			rate->flags |= IEEE80211_TX_RC_80_MHZ_WIDTH;
+-+		else if (bw >= IEEE80211_STA_RX_BW_160)
+-+			rate->flags |= IEEE80211_TX_RC_160_MHZ_WIDTH;
+-+		ieee80211_rate_set_vht(rate, mcs, nss);
+-+		return true;
+-+	}
+-+
+-+	return false;
+-+}
+-+
+-+static bool mac80211_hwsim_tx_ht(struct ieee80211_tx_rate *rate,
+-+				 struct ieee80211_link_sta *peer,
+-+				 enum ieee80211_sta_rx_bandwidth bw)
+-+{
+-+	u8 nss;
+-+
+-+	for (nss = clamp_t(u8, peer->rx_nss, 1, 4); nss; nss--) {
+-+		if (!(peer->ht_cap.mcs.rx_mask[nss - 1] & 0x80))
+-+			continue;
+-+
+-+		rate->flags = IEEE80211_TX_RC_MCS;
+-+		if (bw >= IEEE80211_STA_RX_BW_40)
+-+			rate->flags |= IEEE80211_TX_RC_40_MHZ_WIDTH;
+-+		rate->idx = nss * 8 - 1;
+-+		return true;
+-+	}
+-+
+-+	return false;
+-+}
+-+
+-+/*
+-+ * mac80211 leaves the rates empty with HAS_RATE_CONTROL. Use the highest
+-+ * rate the peer receives, so that the TX status reports a rate.
+-+ */
+-+static void mac80211_hwsim_tx_rate_fill(struct ieee80211_hw *hw,
+-+					struct ieee80211_tx_info *txi,
+-+					struct ieee80211_hdr *hdr,
+-+					struct ieee80211_link_sta *peer,
+-+					struct ieee80211_channel *channel,
+-+					enum nl80211_chan_width confbw)
+-+{
+-+	struct ieee80211_tx_rate *rate = &txi->control.rates[0];
+-+	struct ieee80211_supported_band *sband = hw->wiphy->bands[channel->band];
+-+	enum ieee80211_sta_rx_bandwidth bw;
+-+
+-+	if (!ieee80211_hw_check(hw, HAS_RATE_CONTROL) ||
+-+	    (rate->idx >= 0 && rate->count) || !sband || !sband->n_bitrates)
+-+		return;
+-+
+-+	rate->idx = sband->n_bitrates - 1;
+-+	rate->count = 1;
+-+	rate->flags = 0;
+-+	txi->control.rates[1].idx = -1;
+-+
+-+	if (!peer || !ieee80211_is_data(hdr->frame_control))
+-+		return;
+-+
+-+	bw = min(peer->bandwidth, mac80211_hwsim_chan_width_bw(confbw));
+-+
+-+	if (channel->band != NL80211_BAND_2GHZ && peer->vht_cap.vht_supported &&
+-+	    mac80211_hwsim_tx_vht(rate, peer, bw))
+-+		return;
+-+
+-+	if (peer->ht_cap.ht_supported)
+-+		mac80211_hwsim_tx_ht(rate, peer, bw);
+-+}
+-+
+- static void mac80211_hwsim_tx(struct ieee80211_hw *hw,
+- 			      struct ieee80211_tx_control *control,
+- 			      struct sk_buff *skb)
+-@@ -2143,6 +2261,8 @@ static void mac80211_hwsim_tx(struct iee
+- 	struct ieee80211_chanctx_conf *chanctx_conf;
+- 	struct ieee80211_channel *channel;
+- 	struct ieee80211_vif *vif = txi->control.vif;
+-+	struct ieee80211_link_sta *peer =
+-+		control->sta ? &control->sta->deflink : NULL;
+- 	bool ack, unicast_data;
+- 	enum nl80211_chan_width confbw = NL80211_CHAN_WIDTH_20_NOHT;
+- 	u32 _portid, i;
+-@@ -2203,6 +2323,9 @@ static void mac80211_hwsim_tx(struct iee
+- 								 hdr, &link_sta);
+- 		}
+- 
+-+		if (link_sta)
+-+			peer = link_sta;
+-+
+- 		if (unlikely(!bss_conf)) {
+- 			/* if it's an MLO STA, it might have deactivated all
+- 			 * links temporarily - but we don't handle real PS in
+-@@ -2265,6 +2388,8 @@ static void mac80211_hwsim_tx(struct iee
+- 		return;
+- 	}
+- 
+-+	mac80211_hwsim_tx_rate_fill(hw, txi, hdr, peer, channel, confbw);
+-+
+- 	if (vif)
+- 		hwsim_check_magic(vif);
+- 	if (control->sta)
+diff --git a/package/kernel/mac80211/patches/subsys/408-wifi-mac80211_hwsim-let-mac80211-monitor-the-connection-of-an-MLO-station.patch b/package/kernel/mac80211/patches/subsys/408-wifi-mac80211_hwsim-let-mac80211-monitor-the-connection-of-an-MLO-station.patch
+deleted file mode 100644
+index e9756296..00000000
+--- a/package/kernel/mac80211/patches/subsys/408-wifi-mac80211_hwsim-let-mac80211-monitor-the-connection-of-an-MLO-station.patch
++++ /dev/null
+@@ -1,24 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Sun, 27 Sep 2026 23:55:00 +0200
+-Subject: [PATCH] wifi: mac80211_hwsim: let mac80211 monitor the connection of an MLO station
+-
+-An MLO radio declares CONNECTION_MONITOR, which stops mac80211's beacon
+-monitor and connection monitor, but hwsim reports neither a beacon loss
+-nor a connection loss itself. A station whose AP went away without a
+-deauthentication it accepts therefore stayed associated for good.
+-
+-mac80211 monitors the active links of an MLD station, so leave the flag
+-out and let it.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+---- a/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+-+++ b/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+-@@ -6076,7 +6076,6 @@ static int mac80211_hwsim_new_radio(stru
+- 		hw->wiphy->flags |= WIPHY_FLAG_SUPPORTS_MLO;
+- 		ieee80211_hw_set(hw, HAS_RATE_CONTROL);
+- 		ieee80211_hw_set(hw, SUPPORTS_DYNAMIC_PS);
+--		ieee80211_hw_set(hw, CONNECTION_MONITOR);
+- 		ieee80211_hw_set(hw, AP_LINK_PS);
+- 
+- 		hw->wiphy->iftype_ext_capab = mac80211_hwsim_iftypes_ext_capa;
+diff --git a/package/kernel/mac80211/patches/subsys/409-wifi-mac80211-take-a-group-addressed-deauth-from-any-link-of-the-AP-MLD.patch b/package/kernel/mac80211/patches/subsys/409-wifi-mac80211-take-a-group-addressed-deauth-from-any-link-of-the-AP-MLD.patch
+deleted file mode 100644
+index 632f2e7e..00000000
+--- a/package/kernel/mac80211/patches/subsys/409-wifi-mac80211-take-a-group-addressed-deauth-from-any-link-of-the-AP-MLD.patch
++++ /dev/null
+@@ -1,69 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Mon, 28 Sep 2026 03:00:00 +0200
+-Subject: [PATCH] wifi: mac80211: take a group addressed deauth from any link of the AP MLD
+-
+-ieee80211_prepare_and_rx_handle() translates the link addresses of an
+-individually addressed frame to MLD addresses, but leaves a group
+-addressed frame as it is. A group addressed Deauthentication or
+-Disassociation frame from an AP affiliated with the AP MLD therefore
+-names that AP's link address as the BSSID. ieee80211_rx_mgmt_deauth()
+-and ieee80211_rx_mgmt_disassoc() compare the BSSID with the AP MLD
+-address alone and drop the frame without a trace, unless the link
+-address of that AP equals the AP MLD address. cfg80211 would drop it
+-as well, as it compares the BSSID with the connected address.
+-
+-Deauthentication frames may be sent as group addressed frames
+-(802.11-2024 12.3.3.1), and the destination deauthenticates with the
+-originating MLD (802.11be 11.3.4.5). An AP that restarts a link
+-flushes its stations and sends such a frame; a non-AP MLD associated
+-on another link then keeps a dead association.
+-
+-Name the sender of a group addressed deauthentication or disassociation
+-frame by the AP MLD address when it comes from the BSSID of the link it
+-was received on. The frame has passed the management frame protection
+-checks at that point.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+---- a/net/mac80211/mlme.c
+-+++ b/net/mac80211/mlme.c
+-@@ -5678,6 +5678,27 @@ const char *ieee80211_get_reason_code_st
+- 	}
+- }
+- 
+-+/*
+-+ * ieee80211_prepare_and_rx_handle() translates the addresses of
+-+ * individually addressed frames only.
+-+ */
+-+static void ieee80211_mgd_group_addrs_to_mld(struct ieee80211_link_data *link,
+-+					     struct ieee80211_mgmt *mgmt)
+-+{
+-+	struct ieee80211_sub_if_data *sdata = link->sdata;
+-+
+-+	if (!ieee80211_vif_is_mld(&sdata->vif) ||
+-+	    !is_multicast_ether_addr(mgmt->da))
+-+		return;
+-+
+-+	if (!ether_addr_equal(mgmt->bssid, link->u.mgd.bssid) ||
+-+	    !ether_addr_equal(mgmt->sa, link->u.mgd.bssid))
+-+		return;
+-+
+-+	ether_addr_copy(mgmt->sa, sdata->vif.cfg.ap_addr);
+-+	ether_addr_copy(mgmt->bssid, sdata->vif.cfg.ap_addr);
+-+}
+-+
+- static void ieee80211_rx_mgmt_deauth(struct ieee80211_sub_if_data *sdata,
+- 				     struct ieee80211_mgmt *mgmt, size_t len)
+- {
+-@@ -11845,9 +11866,11 @@ void ieee80211_sta_rx_queued_frame(struc
+- 		ieee80211_rx_mgmt_auth(sdata, mgmt, skb->len);
+- 		break;
+- 	case IEEE80211_STYPE_DEAUTH:
+-+		ieee80211_mgd_group_addrs_to_mld(link, mgmt);
+- 		ieee80211_rx_mgmt_deauth(sdata, mgmt, skb->len);
+- 		break;
+- 	case IEEE80211_STYPE_DISASSOC:
+-+		ieee80211_mgd_group_addrs_to_mld(link, mgmt);
+- 		ieee80211_rx_mgmt_disassoc(sdata, mgmt, skb->len);
+- 		break;
+- 	case IEEE80211_STYPE_ASSOC_RESP:
+diff --git a/package/kernel/mac80211/patches/subsys/410-wifi-cfg80211-keep-the-interface-state-while-another-AP-link-beacons.patch b/package/kernel/mac80211/patches/subsys/410-wifi-cfg80211-keep-the-interface-state-while-another-AP-link-beacons.patch
+deleted file mode 100644
+index 9f78b20b..00000000
+--- a/package/kernel/mac80211/patches/subsys/410-wifi-cfg80211-keep-the-interface-state-while-another-AP-link-beacons.patch
++++ /dev/null
+@@ -1,50 +0,0 @@
+-From ce8ef1122015eea58c300485a330320985a27a19 Mon Sep 17 00:00:00 2001
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Tue, 29 Sep 2026 07:41:25 +0200
+-Subject: [PATCH] wifi: cfg80211: keep the interface state while another AP
+- link beacons
+-
+-Since stop_ap works per link, ___cfg80211_stop_ap() stops one link of
+-an AP MLD, but clears state that belongs to the interface: the
+-connection owner, the SSID and the QoS map. The other links keep
+-beaconing with an empty SSID in NL80211_CMD_GET_INTERFACE and no DSCP
+-to user priority map, until the next START_AP on some link sets them
+-again.
+-
+-Clear them only when no link of the interface beacons any more.
+-
+-This changes what userspace sees. nl80211_start_ap() refuses, with
+--EINVAL, a link whose SSID differs from the one the interface holds
+-("require identical SSID for MLO"). With the SSID kept, a START_AP that
+-changes the SSID of one link while another link beacons with the old
+-one now fails, where it succeeded before. Userspace has to stop all
+-links of the interface before it starts them with a new SSID, which is
+-what an SSID shared by an AP MLD needs.
+-
+-Fixes: 7b0a0e3c3a88 ("wifi: cfg80211: do some rework towards MLO link APIs")
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+- net/wireless/ap.c | 11 ++++++++---
+- 1 file changed, 8 insertions(+), 3 deletions(-)
+-
+---- a/net/wireless/ap.c
+-+++ b/net/wireless/ap.c
+-@@ -35,12 +35,15 @@ static int ___cfg80211_stop_ap(struct cf
+- 
+- 	err = rdev_stop_ap(rdev, dev, link_id);
+- 	if (!err) {
+--		wdev->conn_owner_nlportid = 0;
+- 		wdev->links[link_id].ap.beacon_interval = 0;
+- 		memset(&wdev->links[link_id].ap.chandef, 0,
+- 		       sizeof(wdev->links[link_id].ap.chandef));
+--		wdev->u.ap.ssid_len = 0;
+--		rdev_set_qos_map(rdev, dev, NULL);
+-+
+-+		if (!cfg80211_beaconing_iface_active(wdev)) {
+-+			wdev->conn_owner_nlportid = 0;
+-+			wdev->u.ap.ssid_len = 0;
+-+			rdev_set_qos_map(rdev, dev, NULL);
+-+		}
+- 		if (notify)
+- 			nl80211_send_ap_stopped(wdev, link_id);
+- 
+diff --git a/package/kernel/mac80211/patches/subsys/411-wifi-mac80211-keep-the-carrier-while-another-AP-link-beacons.patch b/package/kernel/mac80211/patches/subsys/411-wifi-mac80211-keep-the-carrier-while-another-AP-link-beacons.patch
+deleted file mode 100644
+index 7259f05e..00000000
+--- a/package/kernel/mac80211/patches/subsys/411-wifi-mac80211-keep-the-carrier-while-another-AP-link-beacons.patch
++++ /dev/null
+@@ -1,65 +0,0 @@
+-From 73a2d8189877717fc31ce69167a38cc02197a1d0 Mon Sep 17 00:00:00 2001
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Tue, 29 Sep 2026 07:42:07 +0200
+-Subject: [PATCH] wifi: mac80211: keep the carrier while another AP link
+- beacons
+-
+-Since stop_ap works per link, ieee80211_stop_ap() stops one link of an
+-AP MLD, but turns off the carrier of every AP_VLAN of the interface and
+-clears interface state: the SSID, the S1G flag and the beacon rate
+-flag. A 4-address station on another link loses the carrier of its
+-AP_VLAN, and with it its bridge port, whenever any link stops.
+-
+-Turn off the AP_VLAN carriers and clear the interface state only with
+-the last link that beacons, as commit 5fcc7c51f9e7 ("wifi: mac80211:
+-handle netif carrier up/down with link AP during MLO") already does for
+-the carrier of the interface itself.
+-
+-Fixes: 7b0a0e3c3a88 ("wifi: cfg80211: do some rework towards MLO link APIs")
+-Fixes: d9f83f22a791 ("wifi: mac80211: use link in start/stop ap")
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+- net/mac80211/cfg.c | 20 +++++++++++++-------
+- 1 file changed, 13 insertions(+), 7 deletions(-)
+-
+---- a/net/mac80211/cfg.c
+-+++ b/net/mac80211/cfg.c
+-@@ -2025,6 +2025,7 @@ static int ieee80211_stop_ap(struct wiph
+- 	struct ieee80211_bss_conf *link_conf = link->conf;
+- 	u64 changes = BSS_CHANGED_BEACON_ENABLED;
+- 	LIST_HEAD(keys);
+-+	bool last;
+- 
+- 	lockdep_assert_wiphy(local->hw.wiphy);
+- 
+-@@ -2048,11 +2049,11 @@ static int ieee80211_stop_ap(struct wiph
+- 
+- 	ieee80211_free_next_beacon(link);
+- 
+--	/* turn off carrier for this interface and dependent VLANs */
+--	list_for_each_entry(vlan, &sdata->u.ap.vlans, u.vlan.list)
+--		netif_carrier_off(vlan->dev);
+-+	last = ieee80211_num_beaconing_links(sdata) <= 1;
+-+	if (last) {
+-+		list_for_each_entry(vlan, &sdata->u.ap.vlans, u.vlan.list)
+-+			netif_carrier_off(vlan->dev);
+- 
+--	if (ieee80211_num_beaconing_links(sdata) <= 1) {
+- 		netif_carrier_off(dev);
+- 		sdata->u.ap.active = false;
+- 	}
+-@@ -2095,9 +2096,11 @@ static int ieee80211_stop_ap(struct wiph
+- 	RCU_INIT_POINTER(link_conf->tx_bss_conf, NULL);
+- 
+- 	link_conf->enable_beacon = false;
+--	sdata->beacon_rate_set = false;
+--	sdata->vif.cfg.ssid_len = 0;
+--	sdata->vif.cfg.s1g = false;
+-+	if (last) {
+-+		sdata->beacon_rate_set = false;
+-+		sdata->vif.cfg.ssid_len = 0;
+-+		sdata->vif.cfg.s1g = false;
+-+	}
+- 	clear_bit(SDATA_STATE_OFFCHANNEL_BEACON_STOPPED, &sdata->state);
+- 	ieee80211_link_info_change_notify(sdata, link, changes);
+- 
+diff --git a/package/kernel/mac80211/patches/subsys/412-wifi-mac80211-stop-only-the-MBSSID-set-of-the-stopped-AP-link.patch b/package/kernel/mac80211/patches/subsys/412-wifi-mac80211-stop-only-the-MBSSID-set-of-the-stopped-AP-link.patch
+deleted file mode 100644
+index 6d838ac1..00000000
+--- a/package/kernel/mac80211/patches/subsys/412-wifi-mac80211-stop-only-the-MBSSID-set-of-the-stopped-AP-link.patch
++++ /dev/null
+@@ -1,156 +0,0 @@
+-From 4d1a49bbd683e571b20bb7077bfeb6f69daa0911 Mon Sep 17 00:00:00 2001
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Tue, 29 Sep 2026 09:44:40 +0200
+-Subject: [PATCH] wifi: mac80211: stop only the MBSSID set of the stopped AP
+- link
+-
+-ieee80211_stop_ap() stops one link, but calls ieee80211_stop_mbssid(),
+-which walks every active link of the interface. The stop of one link of
+-an AP MLD thus takes apart the MBSSID set of each other link and stops
+-the interfaces of those sets, on radios that keep running.
+-
+-Take apart only the MBSSID set of the link that stops. Stopping the
+-whole interface still walks all its links.
+-
+-Fixes: f600832794c9 ("wifi: mac80211: restructure tx profile retrieval for MLO MBSSID")
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+- net/mac80211/cfg.c         |   2 +-
+- net/mac80211/ieee80211_i.h |   2 +
+- net/mac80211/iface.c       | 102 ++++++++++++++++++++-----------------
+- 3 files changed, 58 insertions(+), 48 deletions(-)
+-
+---- a/net/mac80211/cfg.c
+-+++ b/net/mac80211/cfg.c
+-@@ -2092,7 +2092,7 @@ static int ieee80211_stop_ap(struct wiph
+- 
+- 	__sta_info_flush(sdata, true, link_id, NULL);
+- 
+--	ieee80211_stop_mbssid(sdata);
+-+	ieee80211_stop_mbssid_link(sdata, link_conf);
+- 	RCU_INIT_POINTER(link_conf->tx_bss_conf, NULL);
+- 
+- 	link_conf->enable_beacon = false;
+---- a/net/mac80211/ieee80211_i.h
+-+++ b/net/mac80211/ieee80211_i.h
+-@@ -2986,6 +2986,8 @@ int ieee80211_mgd_assoc_ml_reconf(struct
+- 				  struct cfg80211_ml_reconf_req *req);
+- 
+- void ieee80211_stop_mbssid(struct ieee80211_sub_if_data *sdata);
+-+void ieee80211_stop_mbssid_link(struct ieee80211_sub_if_data *sdata,
+-+				struct ieee80211_bss_conf *link_conf);
+- 
+- void
+- ieee80211_uhr_cap_ie_to_sta_uhr_cap(struct ieee80211_sub_if_data *sdata,
+---- a/net/mac80211/iface.c
+-+++ b/net/mac80211/iface.c
+-@@ -786,60 +786,68 @@ static void ieee80211_do_stop(struct iee
+- 		ieee80211_add_virtual_monitor(local, NULL);
+- }
+- 
+--void ieee80211_stop_mbssid(struct ieee80211_sub_if_data *sdata)
+-+void ieee80211_stop_mbssid_link(struct ieee80211_sub_if_data *sdata,
+-+				struct ieee80211_bss_conf *link_conf)
+- {
+- 	struct ieee80211_sub_if_data *tx_sdata;
+--	struct ieee80211_bss_conf *link_conf, *tx_bss_conf;
+-+	struct ieee80211_bss_conf *tx_bss_conf;
+- 	struct ieee80211_link_data *tx_link, *link;
+--	unsigned int link_id;
+- 
+- 	lockdep_assert_wiphy(sdata->local->hw.wiphy);
+- 
+--	/* Check if any of the links of current sdata is an MBSSID. */
+--	for_each_vif_active_link(&sdata->vif, link_conf, link_id) {
+--		tx_bss_conf = sdata_dereference(link_conf->tx_bss_conf, sdata);
+--		if (!tx_bss_conf)
+-+	tx_bss_conf = sdata_dereference(link_conf->tx_bss_conf, sdata);
+-+	if (!tx_bss_conf)
+-+		return;
+-+
+-+	tx_sdata = vif_to_sdata(tx_bss_conf->vif);
+-+	RCU_INIT_POINTER(link_conf->tx_bss_conf, NULL);
+-+
+-+	/* If we are not tx sdata reset tx sdata's tx_bss_conf to avoid recusrion
+-+	 * while closing tx sdata at the end below.
+-+	 */
+-+	if (sdata != tx_sdata) {
+-+		tx_link = sdata_dereference(tx_sdata->link[tx_bss_conf->link_id],
+-+					    tx_sdata);
+-+		if (!tx_link)
+-+			return;
+-+
+-+		RCU_INIT_POINTER(tx_link->conf->tx_bss_conf, NULL);
+-+	}
+-+
+-+	/* loop through sdatas to find if any of their links
+-+	 * belong to same MBSSID set as the one getting deleted.
+-+	 */
+-+	for_each_sdata_link(tx_sdata->local, link) {
+-+		struct ieee80211_sub_if_data *link_sdata = link->sdata;
+-+
+-+		if (link_sdata == sdata || link_sdata == tx_sdata ||
+-+		    rcu_access_pointer(link->conf->tx_bss_conf) != tx_bss_conf)
+- 			continue;
+- 
+--		tx_sdata = vif_to_sdata(tx_bss_conf->vif);
+--		RCU_INIT_POINTER(link_conf->tx_bss_conf, NULL);
+-+		RCU_INIT_POINTER(link->conf->tx_bss_conf, NULL);
+- 
+--		/* If we are not tx sdata reset tx sdata's tx_bss_conf to avoid recusrion
+--		 * while closing tx sdata at the end of outer loop below.
+-+		/* Remove all links of matching MLD until dynamic link
+-+		 * removal can be supported.
+- 		 */
+--		if (sdata != tx_sdata) {
+--			tx_link = sdata_dereference(tx_sdata->link[tx_bss_conf->link_id],
+--						    tx_sdata);
+--			if (!tx_link)
+--				continue;
+-+		cfg80211_stop_iface(link_sdata->wdev.wiphy, &link_sdata->wdev,
+-+				    GFP_KERNEL);
+-+	}
+- 
+--			RCU_INIT_POINTER(tx_link->conf->tx_bss_conf, NULL);
+--		}
+-+	/* If we are not tx sdata, remove links of tx sdata */
+-+	if (sdata != tx_sdata && ieee80211_sdata_running(tx_sdata))
+-+		cfg80211_stop_iface(tx_sdata->wdev.wiphy,
+-+				    &tx_sdata->wdev, GFP_KERNEL);
+-+}
+- 
+--		/* loop through sdatas to find if any of their links
+--		 * belong to same MBSSID set as the one getting deleted.
+--		 */
+--		for_each_sdata_link(tx_sdata->local, link) {
+--			struct ieee80211_sub_if_data *link_sdata = link->sdata;
+-+void ieee80211_stop_mbssid(struct ieee80211_sub_if_data *sdata)
+-+{
+-+	struct ieee80211_bss_conf *link_conf;
+-+	unsigned int link_id;
+- 
+--			if (link_sdata == sdata || link_sdata == tx_sdata ||
+--			    rcu_access_pointer(link->conf->tx_bss_conf) != tx_bss_conf)
+--				continue;
+--
+--			RCU_INIT_POINTER(link->conf->tx_bss_conf, NULL);
+--
+--			/* Remove all links of matching MLD until dynamic link
+--			 * removal can be supported.
+--			 */
+--			cfg80211_stop_iface(link_sdata->wdev.wiphy, &link_sdata->wdev,
+--					    GFP_KERNEL);
+--		}
+--
+--		/* If we are not tx sdata, remove links of tx sdata and proceed */
+--		if (sdata != tx_sdata && ieee80211_sdata_running(tx_sdata))
+--			cfg80211_stop_iface(tx_sdata->wdev.wiphy,
+--					    &tx_sdata->wdev, GFP_KERNEL);
+--	}
+-+	lockdep_assert_wiphy(sdata->local->hw.wiphy);
+-+
+-+	for_each_vif_active_link(&sdata->vif, link_conf, link_id)
+-+		ieee80211_stop_mbssid_link(sdata, link_conf);
+- }
+- 
+- static int ieee80211_stop(struct net_device *dev)
+diff --git a/package/kernel/mac80211/patches/subsys/413-wifi-mac80211_hwsim-make-the-interface-limit-of-a-radio-a-parameter.patch b/package/kernel/mac80211/patches/subsys/413-wifi-mac80211_hwsim-make-the-interface-limit-of-a-radio-a-parameter.patch
+deleted file mode 100644
+index a48c9d8a..00000000
+--- a/package/kernel/mac80211/patches/subsys/413-wifi-mac80211_hwsim-make-the-interface-limit-of-a-radio-a-parameter.patch
++++ /dev/null
+@@ -1,37 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Mon, 28 Sep 2026 10:30:00 +0200
+-Subject: [PATCH] wifi: mac80211_hwsim: make the interface limit of a radio a parameter
+-
+-A radio combines up to 2048 interfaces of the station, AP, mesh and P2P
+-types, far more than hardware does. Userspace that derives the number of
+-BSSes a radio supports from the interface combinations then reports a
+-value no real radio has.
+-
+-Add the max_interfaces module parameter for that limit. It keeps 2048 by
+-default.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+---- a/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+-+++ b/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+-@@ -72,6 +72,11 @@ static bool mlo;
+- module_param(mlo, bool, 0444);
+- MODULE_PARM_DESC(mlo, "Support MLO");
+- 
+-+static u16 max_interfaces = 2048;
+-+module_param(max_interfaces, ushort, 0444);
+-+MODULE_PARM_DESC(max_interfaces,
+-+		 "Interfaces of the station, AP, mesh and P2P types a radio combines");
+-+
+- static bool multi_radio;
+- module_param(multi_radio, bool, 0444);
+- MODULE_PARM_DESC(multi_radio, "Support Multiple Radios per wiphy");
+-@@ -5926,7 +5931,7 @@ static int mac80211_hwsim_new_radio(stru
+- 	}
+- 
+- 	if (param->iftypes & HWSIM_DEFAULT_IF_LIMIT) {
+--		data->if_limits[n_limits].max = 2048;
+-+		data->if_limits[n_limits].max = max_interfaces ?: 1;
+- 		/*
+- 		 * For this case, we may only support a subset of
+- 		 * HWSIM_DEFAULT_IF_LIMIT, therefore we only want to add the
+diff --git a/package/kernel/mac80211/patches/subsys/414-wifi-cfg80211-take-the-MLO-station-rates-from-the-links-that-report-them.patch b/package/kernel/mac80211/patches/subsys/414-wifi-cfg80211-take-the-MLO-station-rates-from-the-links-that-report-them.patch
+deleted file mode 100644
+index 8d32eb85..00000000
+--- a/package/kernel/mac80211/patches/subsys/414-wifi-cfg80211-take-the-MLO-station-rates-from-the-links-that-report-them.patch
++++ /dev/null
+@@ -1,75 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Thu, 1 Oct 2026 16:36:19 +0200
+-Subject: [PATCH] wifi: cfg80211: take the MLO station rates from the links
+- that report them
+-
+-cfg80211_sta_set_mld_sinfo() takes the TX and RX rate of an MLO station
+-from the link with the least inactive time. The inactive time block
+-before it has already stored this link's value as the least one when it
+-is, so the comparison against it never holds after the first link. The
+-first link then decides alone, and where that link reports no rate the
+-station reports none.
+-
+-mac80211 records the last TX rate of a driver with its own rate control
+-on the station's default link, which is the association link. A station
+-that associated on any other link than the first therefore reports no
+-TX bit rate at all: an MLO backhaul station associated on link 1 of a
+-mac80211_hwsim AP MLD shows only the RX rate of link 0.
+-
+-Track the least inactive time per rate among the links that report it.
+-The TX and RX durations had the same condition, so only the first link
+-was counted; sum them over every link.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+- net/wireless/nl80211.c | 21 ++++++++++-----------
+- 1 file changed, 10 insertions(+), 11 deletions(-)
+-
+---- a/net/wireless/nl80211.c
+-+++ b/net/wireless/nl80211.c
+-@@ -8295,6 +8295,7 @@ static void cfg80211_sta_set_mld_sinfo(s
+- 	struct link_station_info *link_sinfo;
+- 	int link_id, init = 0;
+- 	u32 link_inactive_time;
+-+	u32 txrate_inactive_time = U32_MAX, rxrate_inactive_time = U32_MAX;
+- 
+- 	sinfo->signal = -99;
+- 
+-@@ -8421,31 +8422,27 @@ static void cfg80211_sta_set_mld_sinfo(s
+- 		/* Update MLO rates as per last updated link rate */
+- 		if ((link_sinfo->filled &
+- 		     BIT_ULL(NL80211_STA_INFO_TX_BITRATE)) &&
+--		    (!init ||
+--		     link_inactive_time > link_sinfo->inactive_time)) {
+-+		    link_sinfo->inactive_time <= txrate_inactive_time) {
+-+			txrate_inactive_time = link_sinfo->inactive_time;
+- 			sinfo->txrate = link_sinfo->txrate;
+- 			sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_BITRATE);
+- 		}
+- 		if ((link_sinfo->filled &
+- 		     BIT_ULL(NL80211_STA_INFO_RX_BITRATE)) &&
+--		    (!init ||
+--		     link_inactive_time > link_sinfo->inactive_time)) {
+-+		    link_sinfo->inactive_time <= rxrate_inactive_time) {
+-+			rxrate_inactive_time = link_sinfo->inactive_time;
+- 			sinfo->rxrate = link_sinfo->rxrate;
+- 			sinfo->filled |= BIT_ULL(NL80211_STA_INFO_RX_BITRATE);
+- 		}
+- 
+- 		if (link_sinfo->filled &
+--		    BIT_ULL(NL80211_STA_INFO_TX_DURATION) &&
+--		    (!init ||
+--		     link_inactive_time > link_sinfo->inactive_time)) {
+-+		    BIT_ULL(NL80211_STA_INFO_TX_DURATION)) {
+- 			sinfo->tx_duration += link_sinfo->tx_duration;
+- 			sinfo->filled |=
+- 				BIT_ULL(NL80211_STA_INFO_TX_DURATION);
+- 		}
+- 		if (link_sinfo->filled &
+--		    BIT_ULL(NL80211_STA_INFO_RX_DURATION) &&
+--		    (!init ||
+--		     link_inactive_time > link_sinfo->inactive_time)) {
+-+		    BIT_ULL(NL80211_STA_INFO_RX_DURATION)) {
+- 			sinfo->rx_duration += link_sinfo->rx_duration;
+- 			sinfo->filled |=
+- 				BIT_ULL(NL80211_STA_INFO_RX_DURATION);
+diff --git a/package/kernel/mac80211/patches/subsys/415-wifi-cfg80211-report-the-MLD-address-and-link-of-a-dumped-station.patch b/package/kernel/mac80211/patches/subsys/415-wifi-cfg80211-report-the-MLD-address-and-link-of-a-dumped-station.patch
+deleted file mode 100644
+index d03e0b42..00000000
+--- a/package/kernel/mac80211/patches/subsys/415-wifi-cfg80211-report-the-MLD-address-and-link-of-a-dumped-station.patch
++++ /dev/null
+@@ -1,75 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Thu, 1 Oct 2026 20:23:37 +0200
+-Subject: [PATCH] wifi: cfg80211: report the MLD address and link of a dumped
+- station
+-
+-Since nl80211_dump_station() builds the aggregated message with
+-nl80211_put_sta_info_common() instead of nl80211_send_station(), a
+-station dump no longer carries NL80211_ATTR_MLD_ADDR and
+-NL80211_ATTR_MLO_LINK_ID, while NL80211_CMD_GET_STATION for one station
+-still does. Userspace that dumps the stations of an AP MLD can then no
+-longer tell an MLO station from a legacy one, nor its association link.
+-
+-Move the MLO parameters into nl80211_put_sta_mlo_params() and emit them
+-in the aggregated message of the dump as well. The association IEs stay
+-out of the dump, as 727afb05ef63 intends.
+-
+-Fixes: 727afb05ef63 ("wifi: cfg80211: Refactor nl80211_dump_station() to prepare for per-link stats")
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+- net/wireless/nl80211.c | 30 ++++++++++++++++++++----------
+- 1 file changed, 20 insertions(+), 10 deletions(-)
+-
+---- a/net/wireless/nl80211.c
+-+++ b/net/wireless/nl80211.c
+-@@ -8234,6 +8234,22 @@ nla_put_failure:
+- 	return -EMSGSIZE;
+- }
+- 
+-+static int nl80211_put_sta_mlo_params(struct sk_buff *msg,
+-+				      struct station_info *sinfo)
+-+{
+-+	if (!sinfo->mlo_params_valid)
+-+		return 0;
+-+
+-+	if (nla_put_u8(msg, NL80211_ATTR_MLO_LINK_ID, sinfo->assoc_link_id))
+-+		return -EMSGSIZE;
+-+
+-+	if (!is_zero_ether_addr(sinfo->mld_addr) &&
+-+	    nla_put(msg, NL80211_ATTR_MLD_ADDR, ETH_ALEN, sinfo->mld_addr))
+-+		return -EMSGSIZE;
+-+
+-+	return 0;
+-+}
+-+
+- static int nl80211_send_station(struct sk_buff *msg, u32 cmd, u32 portid,
+- 				u32 seq, int flags,
+- 				struct cfg80211_registered_device *rdev,
+-@@ -8269,16 +8285,8 @@ static int nl80211_send_station(struct s
+- 		    sinfo->assoc_resp_ies))
+- 		goto nla_put_failure;
+- 
+--	if (sinfo->mlo_params_valid) {
+--		if (nla_put_u8(msg, NL80211_ATTR_MLO_LINK_ID,
+--			       sinfo->assoc_link_id))
+--			goto nla_put_failure;
+--
+--		if (!is_zero_ether_addr(sinfo->mld_addr) &&
+--		    nla_put(msg, NL80211_ATTR_MLD_ADDR, ETH_ALEN,
+--			    sinfo->mld_addr))
+--			goto nla_put_failure;
+--	}
+-+	if (nl80211_put_sta_mlo_params(msg, sinfo))
+-+		goto nla_put_failure;
+- 
+- 	cfg80211_sinfo_release_content(sinfo);
+- 	genlmsg_end(msg, hdr);
+-@@ -8673,6 +8681,8 @@ static int nl80211_dump_station(struct s
+- 		switch (ctx->phase) {
+- 		case NL80211_DUMP_STA_PHASE_AGGREGATED:
+- 			ret = nl80211_put_sta_info_common(skb, rdev, &ctx->sinfo);
+-+			if (!ret)
+-+				ret = nl80211_put_sta_mlo_params(skb, &ctx->sinfo);
+- 			if (ret) {
+- 				genlmsg_cancel(skb, hdr);
+- 				err = ret;
+diff --git a/package/kernel/mac80211/patches/subsys/416-wifi-mac80211-convert-the-TX-rate-of-a-link-with-the-band-of-that-link.patch b/package/kernel/mac80211/patches/subsys/416-wifi-mac80211-convert-the-TX-rate-of-a-link-with-the-band-of-that-link.patch
+deleted file mode 100644
+index 3d808bca..00000000
+--- a/package/kernel/mac80211/patches/subsys/416-wifi-mac80211-convert-the-TX-rate-of-a-link-with-the-band-of-that-link.patch
++++ /dev/null
+@@ -1,97 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Thu, 1 Oct 2026 20:43:40 +0200
+-Subject: [PATCH] wifi: mac80211: convert the TX rate of a link with the band
+- of that link
+-
+-sta_set_link_sinfo() converts the last TX rate of a link with
+-sta_set_rate_info_tx(), which takes the band of a legacy rate from
+-ieee80211_get_sband(). That function warns on an MLD interface, and the
+-band it returns is not the band of the link.
+-
+-Split the conversion into ieee80211_tx_rate_to_rate_info(), which takes
+-the band from the caller. sta_set_link_sinfo() passes the band of the
+-channel context of the link. sta_set_rate_info_tx() passes the band of
+-the interface, as before.
+-
+-mac80211 books the last TX rate of an MLO station on the default link,
+-from the TX status of a frame on any link, so a legacy index can lie
+-beyond the bitrate table of the link's band. The conversion checks the
+-index against the table.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+- net/mac80211/cfg.c      | 20 +++++++++++++-------
+- net/mac80211/sta_info.c |  5 +++--
+- net/mac80211/sta_info.h |  3 +++
+- 3 files changed, 19 insertions(+), 9 deletions(-)
+-
+---- a/net/mac80211/cfg.c
+-+++ b/net/mac80211/cfg.c
+-@@ -964,9 +964,9 @@ static int ieee80211_config_default_beac
+- 	return 0;
+- }
+- 
+--void sta_set_rate_info_tx(struct sta_info *sta,
+--			  const struct ieee80211_tx_rate *rate,
+--			  struct rate_info *rinfo)
+-+void ieee80211_tx_rate_to_rate_info(struct ieee80211_supported_band *sband,
+-+				    const struct ieee80211_tx_rate *rate,
+-+				    struct rate_info *rinfo)
+- {
+- 	rinfo->flags = 0;
+- 	if (rate->flags & IEEE80211_TX_RC_MCS) {
+-@@ -977,11 +977,9 @@ void sta_set_rate_info_tx(struct sta_inf
+- 		rinfo->mcs = ieee80211_rate_get_vht_mcs(rate);
+- 		rinfo->nss = ieee80211_rate_get_vht_nss(rate);
+- 	} else {
+--		struct ieee80211_supported_band *sband;
+--
+--		sband = ieee80211_get_sband(sta->sdata);
+- 		WARN_ON_ONCE(sband && !sband->bitrates);
+--		if (sband && sband->bitrates)
+-+		if (sband && sband->bitrates && rate->idx >= 0 &&
+-+		    rate->idx < sband->n_bitrates)
+- 			rinfo->legacy = sband->bitrates[rate->idx].bitrate;
+- 	}
+- 	if (rate->flags & IEEE80211_TX_RC_40_MHZ_WIDTH)
+-@@ -996,6 +994,14 @@ void sta_set_rate_info_tx(struct sta_inf
+- 		rinfo->flags |= RATE_INFO_FLAGS_SHORT_GI;
+- }
+- 
+-+void sta_set_rate_info_tx(struct sta_info *sta,
+-+			  const struct ieee80211_tx_rate *rate,
+-+			  struct rate_info *rinfo)
+-+{
+-+	ieee80211_tx_rate_to_rate_info(ieee80211_get_sband(sta->sdata), rate,
+-+				       rinfo);
+-+}
+-+
+- static int ieee80211_dump_station(struct wiphy *wiphy, struct wireless_dev *wdev,
+- 				  int idx, u8 *mac, struct station_info *sinfo)
+- {
+---- a/net/mac80211/sta_info.c
+-+++ b/net/mac80211/sta_info.c
+-@@ -3009,8 +3009,9 @@ static void sta_set_link_sinfo(struct st
+- 
+- 	if (!(link_sinfo->filled & BIT_ULL(NL80211_STA_INFO_TX_BITRATE)) &&
+- 	    ieee80211_rate_valid(&link_sta_info->tx_stats.last_rate)) {
+--		sta_set_rate_info_tx(sta, &link_sta_info->tx_stats.last_rate,
+--				     &link_sinfo->txrate);
+-+		ieee80211_tx_rate_to_rate_info(ieee80211_get_link_sband(link),
+-+					       &link_sta_info->tx_stats.last_rate,
+-+					       &link_sinfo->txrate);
+- 		link_sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_BITRATE);
+- 	}
+- 
+---- a/net/mac80211/sta_info.h
+-+++ b/net/mac80211/sta_info.h
+-@@ -984,6 +984,9 @@ static inline int sta_info_flush(struct
+- 	return __sta_info_flush(sdata, false, link_id, NULL);
+- }
+- 
+-+void ieee80211_tx_rate_to_rate_info(struct ieee80211_supported_band *sband,
+-+				    const struct ieee80211_tx_rate *rate,
+-+				    struct rate_info *rinfo);
+- void sta_set_rate_info_tx(struct sta_info *sta,
+- 			  const struct ieee80211_tx_rate *rate,
+- 			  struct rate_info *rinfo);
+diff --git a/package/kernel/mac80211/patches/subsys/417-wifi-mac80211-export-the-conversion-of-a-TX-rate-to-a-rate-info.patch b/package/kernel/mac80211/patches/subsys/417-wifi-mac80211-export-the-conversion-of-a-TX-rate-to-a-rate-info.patch
+deleted file mode 100644
+index d6397940..00000000
+--- a/package/kernel/mac80211/patches/subsys/417-wifi-mac80211-export-the-conversion-of-a-TX-rate-to-a-rate-info.patch
++++ /dev/null
+@@ -1,63 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Thu, 1 Oct 2026 20:44:01 +0200
+-Subject: [PATCH] wifi: mac80211: export the conversion of a TX rate to a rate
+- info
+-
+-mac80211 books the TX bytes and packets of an MLO station on the default
+-link, because it counts a frame before the driver selects the link, and
+-the last TX rate there too, because a TX status names no link. A driver
+-that selects the link can keep these per link and report them from its
+-link_sta_statistics callback, but it has no way to convert the TX rate
+-it recorded to the rate info that cfg80211 reports.
+-
+-Export ieee80211_tx_rate_to_rate_info() for that.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+- include/net/mac80211.h  | 19 +++++++++++++++++++
+- net/mac80211/cfg.c      |  1 +
+- net/mac80211/sta_info.h |  3 ---
+- 3 files changed, 20 insertions(+), 3 deletions(-)
+-
+---- a/include/net/mac80211.h
+-+++ b/include/net/mac80211.h
+-@@ -5625,6 +5625,17 @@ void ieee80211_tx_rate_update(struct iee
+- 			      struct ieee80211_tx_info *info);
+- 
+- /**
+-+ * ieee80211_tx_rate_to_rate_info - convert a TX rate to a rate info
+-+ *
+-+ * @sband: the band the frame was sent on, for a legacy rate; may be %NULL
+-+ * @rate: the TX rate, as in &struct ieee80211_tx_info
+-+ * @rinfo: the rate info to fill, zeroed by the caller
+-+ */
+-+void ieee80211_tx_rate_to_rate_info(struct ieee80211_supported_band *sband,
+-+				    const struct ieee80211_tx_rate *rate,
+-+				    struct rate_info *rinfo);
+-+
+-+/**
+-  * ieee80211_tx_status_skb - transmit status callback
+-  *
+-  * Call this function for all transmitted frames after they have been
+---- a/net/mac80211/cfg.c
+-+++ b/net/mac80211/cfg.c
+-@@ -993,6 +993,7 @@ void ieee80211_tx_rate_to_rate_info(stru
+- 	if (rate->flags & IEEE80211_TX_RC_SHORT_GI)
+- 		rinfo->flags |= RATE_INFO_FLAGS_SHORT_GI;
+- }
+-+EXPORT_SYMBOL(ieee80211_tx_rate_to_rate_info);
+- 
+- void sta_set_rate_info_tx(struct sta_info *sta,
+- 			  const struct ieee80211_tx_rate *rate,
+---- a/net/mac80211/sta_info.h
+-+++ b/net/mac80211/sta_info.h
+-@@ -984,9 +984,6 @@ static inline int sta_info_flush(struct
+- 	return __sta_info_flush(sdata, false, link_id, NULL);
+- }
+- 
+--void ieee80211_tx_rate_to_rate_info(struct ieee80211_supported_band *sband,
+--				    const struct ieee80211_tx_rate *rate,
+--				    struct rate_info *rinfo);
+- void sta_set_rate_info_tx(struct sta_info *sta,
+- 			  const struct ieee80211_tx_rate *rate,
+- 			  struct rate_info *rinfo);
+diff --git a/package/kernel/mac80211/patches/subsys/418-wifi-mac80211-keep-the-driver-s-counters-of-a-removed-station-link.patch b/package/kernel/mac80211/patches/subsys/418-wifi-mac80211-keep-the-driver-s-counters-of-a-removed-station-link.patch
+deleted file mode 100644
+index aa9cbac9..00000000
+--- a/package/kernel/mac80211/patches/subsys/418-wifi-mac80211-keep-the-driver-s-counters-of-a-removed-station-link.patch
++++ /dev/null
+@@ -1,197 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Thu, 1 Oct 2026 22:21:22 +0200
+-Subject: [PATCH] wifi: mac80211: keep the driver's counters of a removed
+- station link
+-
+-When a link of an MLO station is removed, sta_accumulate_removed_link_stats()
+-adds mac80211's own counters of the link to rem_link_stats, which then
+-stands for the removed links in the station totals. mac80211 books the TX
+-of an MLO station on the default link alone, so a driver that reports the
+-TX counters of each link from link_sta_statistics, as sta_set_link_sinfo()
+-prefers, makes the totals wrong at the removal: removing the default link
+-adds the TX of every link once more, and removing another link drops its
+-TX from the totals, which then fall.
+-
+-Ask the driver for the counters of the link before drv_change_sta_links(),
+-which may let it drop them, and take those it fills in place of
+-mac80211's own when the link's counters are accumulated.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+- net/mac80211/sta_info.c | 96 +++++++++++++++++++++++++++++++++++------
+- 1 file changed, 83 insertions(+), 13 deletions(-)
+-
+---- a/net/mac80211/sta_info.c
+-+++ b/net/mac80211/sta_info.c
+-@@ -364,31 +364,57 @@ static void sta_link_free_rcu(struct rcu
+- 	kfree(alloc);
+- }
+- 
+--static void sta_accumulate_removed_link_stats(struct sta_info *sta, int link_id)
+-+static bool sta_link_drv_filled(const struct link_station_info *drv, u64 bits)
+-+{
+-+	return drv && (drv->filled & bits);
+-+}
+-+
+-+static void sta_accumulate_removed_link_stats(struct sta_info *sta, int link_id,
+-+					      const struct link_station_info *drv)
+- {
+- 	struct link_sta_info *link_sta = wiphy_dereference(sta->local->hw.wiphy,
+- 							   sta->link[link_id]);
+- 	struct ieee80211_link_data *link;
+-+	u64 tx_packets = 0, tx_bytes = 0;
+- 	unsigned int start;
+- 	int ac, tid;
+- 	u64 value;
+- 	u32 thr;
+- 
+- 	for (ac = 0; ac < IEEE80211_NUM_ACS; ac++) {
+--		sta->rem_link_stats.tx_packets +=
+--			link_sta->tx_stats.packets[ac];
+--		sta->rem_link_stats.tx_bytes += link_sta->tx_stats.bytes[ac];
+-+		tx_packets += link_sta->tx_stats.packets[ac];
+-+		tx_bytes += link_sta->tx_stats.bytes[ac];
+- 	}
+- 
+-+	/* As in sta_set_link_sinfo(), the driver's counters take precedence */
+-+	if (sta_link_drv_filled(drv, BIT_ULL(NL80211_STA_INFO_TX_PACKETS)))
+-+		tx_packets = drv->tx_packets;
+-+	if (sta_link_drv_filled(drv, BIT_ULL(NL80211_STA_INFO_TX_BYTES64) |
+-+				     BIT_ULL(NL80211_STA_INFO_TX_BYTES)))
+-+		tx_bytes = drv->tx_bytes;
+-+
+-+	sta->rem_link_stats.tx_packets += tx_packets;
+-+	sta->rem_link_stats.tx_bytes += tx_bytes;
+-+
+- 	do {
+- 		start = u64_stats_fetch_begin(&link_sta->rx_stats.syncp);
+- 		value = u64_stats_read(&link_sta->rx_stats.bytes);
+- 	} while (u64_stats_fetch_retry(&link_sta->rx_stats.syncp, start));
+- 
+--	sta->rem_link_stats.rx_packets += link_sta->rx_stats.packets;
+-+	if (sta_link_drv_filled(drv, BIT_ULL(NL80211_STA_INFO_RX_BYTES64) |
+-+				     BIT_ULL(NL80211_STA_INFO_RX_BYTES)))
+-+		value = drv->rx_bytes;
+-+
+-+	sta->rem_link_stats.rx_packets +=
+-+		sta_link_drv_filled(drv, BIT_ULL(NL80211_STA_INFO_RX_PACKETS)) ?
+-+		drv->rx_packets : link_sta->rx_stats.packets;
+- 	sta->rem_link_stats.rx_bytes += value;
+--	sta->rem_link_stats.tx_retries += link_sta->status_stats.retry_count;
+--	sta->rem_link_stats.tx_failed += link_sta->status_stats.retry_failed;
+-+	sta->rem_link_stats.tx_retries +=
+-+		sta_link_drv_filled(drv, BIT_ULL(NL80211_STA_INFO_TX_RETRIES)) ?
+-+		drv->tx_retries : link_sta->status_stats.retry_count;
+-+	sta->rem_link_stats.tx_failed +=
+-+		sta_link_drv_filled(drv, BIT_ULL(NL80211_STA_INFO_TX_FAILED)) ?
+-+		drv->tx_failed : link_sta->status_stats.retry_failed;
+- 	sta->rem_link_stats.rx_dropped_misc += link_sta->rx_stats.dropped;
+- 
+- 	thr = sta_get_expected_throughput(sta);
+-@@ -421,7 +447,7 @@ static void sta_accumulate_removed_link_
+- }
+- 
+- static void sta_remove_link(struct sta_info *sta, unsigned int link_id,
+--			    bool unhash)
+-+			    bool unhash, const struct link_station_info *drv)
+- {
+- 	struct sta_link_alloc *alloc = NULL;
+- 	struct link_sta_info *link_sta;
+-@@ -444,7 +470,7 @@ static void sta_remove_link(struct sta_i
+- 	sta->sta.valid_links &= ~BIT(link_id);
+- 
+- 	/* store removed link info for accumulated stats consistency */
+--	sta_accumulate_removed_link_stats(sta, link_id);
+-+	sta_accumulate_removed_link_stats(sta, link_id, drv);
+- 
+- 	RCU_INIT_POINTER(sta->link[link_id], NULL);
+- 	RCU_INIT_POINTER(sta->sta.link[link_id], NULL);
+-@@ -476,7 +502,7 @@ void sta_info_free(struct ieee80211_loca
+- 		if (!link_sta)
+- 			continue;
+- 
+--		sta_remove_link(sta, i, false);
+-+		sta_remove_link(sta, i, false, NULL);
+- 	}
+- 
+- 	/*
+-@@ -3444,7 +3470,7 @@ void ieee80211_sta_free_link(struct sta_
+- 
+- 	WARN_ON(!test_sta_flag(sta, WLAN_STA_INSERTED));
+- 
+--	sta_remove_link(sta, link_id, false);
+-+	sta_remove_link(sta, link_id, false, NULL);
+- }
+- 
+- int ieee80211_sta_activate_link(struct sta_info *sta, unsigned int link_id)
+-@@ -3485,7 +3511,7 @@ int ieee80211_sta_activate_link(struct s
+- 				   old_links, new_links);
+- 	if (ret) {
+- 		sta->sta.valid_links = old_links;
+--		sta_remove_link(sta, link_id, false);
+-+		sta_remove_link(sta, link_id, false, NULL);
+- 		return ret;
+- 	}
+- 
+-@@ -3495,20 +3521,60 @@ hash:
+- 	return 0;
+- }
+- 
+-+/* Read before drv_change_sta_links(), which may let the driver drop the
+-+ * counters it keeps for the link.
+-+ */
+-+static struct link_station_info *
+-+sta_link_drv_stats_get(struct sta_info *sta, unsigned int link_id)
+-+{
+-+	struct ieee80211_local *local = sta->local;
+-+	struct link_station_info *link_sinfo;
+-+	struct link_sta_info *link_sta;
+-+
+-+	if (!local->ops->link_sta_statistics ||
+-+	    !test_sta_flag(sta, WLAN_STA_INSERTED))
+-+		return NULL;
+-+
+-+	link_sta = wiphy_dereference(local->hw.wiphy, sta->link[link_id]);
+-+	if (!link_sta)
+-+		return NULL;
+-+
+-+	link_sinfo = kzalloc(sizeof(*link_sinfo), GFP_KERNEL);
+-+	if (!link_sinfo)
+-+		return NULL;
+-+
+-+	drv_link_sta_statistics(local, sta->sdata, link_sta->pub, link_sinfo);
+-+
+-+	return link_sinfo;
+-+}
+-+
+-+static void sta_link_drv_stats_free(struct link_station_info *link_sinfo)
+-+{
+-+	if (!link_sinfo)
+-+		return;
+-+
+-+	kfree(link_sinfo->pertid);
+-+	kfree(link_sinfo);
+-+}
+-+
+- void ieee80211_sta_remove_link(struct sta_info *sta, unsigned int link_id)
+- {
+- 	struct ieee80211_sub_if_data *sdata = sta->sdata;
+- 	u16 old_links = sta->sta.valid_links;
+-+	struct link_station_info *drv;
+- 
+- 	lockdep_assert_wiphy(sdata->local->hw.wiphy);
+- 
+-+	drv = sta_link_drv_stats_get(sta, link_id);
+-+
+- 	sta->sta.valid_links &= ~BIT(link_id);
+- 
+- 	if (!WARN_ON(!test_sta_flag(sta, WLAN_STA_INSERTED)))
+- 		drv_change_sta_links(sdata->local, sdata, &sta->sta,
+- 				     old_links, sta->sta.valid_links);
+- 
+--	sta_remove_link(sta, link_id, true);
+-+	sta_remove_link(sta, link_id, true, drv);
+-+	sta_link_drv_stats_free(drv);
+- }
+- 
+- static u8 ieee80211_sta_nss_capability(struct link_sta_info *link_sta)
+diff --git a/package/kernel/mac80211/patches/subsys/419-wifi-mac80211_hwsim-report-the-TX-counters-and-rate-of-each-station-link.patch b/package/kernel/mac80211/patches/subsys/419-wifi-mac80211_hwsim-report-the-TX-counters-and-rate-of-each-station-link.patch
+deleted file mode 100644
+index 71da1e4b..00000000
+--- a/package/kernel/mac80211/patches/subsys/419-wifi-mac80211_hwsim-report-the-TX-counters-and-rate-of-each-station-link.patch
++++ /dev/null
+@@ -1,216 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Thu, 1 Oct 2026 20:44:19 +0200
+-Subject: [PATCH] wifi: mac80211_hwsim: report the TX counters and rate of each
+- station link
+-
+-mac80211 books every frame to an MLO station on the default link, so a
+-per-link station dump shows all TX bytes, packets and the TX rate on the
+-association link, and none on the other links, whichever link carried
+-the frames. Userspace that compares the links of a station, for example
+-to report the metrics of each affiliated station, then reads wrong
+-values.
+-
+-hwsim selects the link of each frame. Count the bytes and packets per
+-access category on that link as ieee80211_tx_h_stats() counts them on
+-the default link: the length before encryption, and one packet for all
+-fragments of an MSDU. Record the rate of the first attempt of a data
+-frame with the band of the link channel. A frame whose link station is
+-not resolved is not counted. Report bytes, packets and rate from the
+-link_sta_statistics callback, which mac80211 calls for each link of a
+-station with links. Retries, failures and the other per-link fields stay
+-mac80211's.
+-
+-Clear the record of a link that is new to the station's valid links.
+-old_links and new_links of change_sta_links are masked with the active
+-links, so a link that becomes active again keeps its record. A record
+-also starts again for a new link station under the same link ID, since
+-mac80211 does not call change_sta_links for a link it removes after the
+-vif link or for a dormant one.
+-
+-The rate is the rate at TX time, not the rate of the TX status, which
+-names no link; with HAS_RATE_CONTROL the two are the same here. The
+-station totals are the sum of the links, and of removed links, whose
+-counters mac80211 now takes from the driver.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+- .../net/wireless/virtual/mac80211_hwsim_i.h   | 12 +++
+- .../wireless/virtual/mac80211_hwsim_main.c    | 94 ++++++++++++++++++-
+- 2 files changed, 105 insertions(+), 1 deletion(-)
+-
+---- a/drivers/net/wireless/virtual/mac80211_hwsim_i.h
+-+++ b/drivers/net/wireless/virtual/mac80211_hwsim_i.h
+-@@ -24,11 +24,23 @@ struct hwsim_sta_nan_sched {
+- 	} maps[CFG80211_NAN_MAX_PEER_MAPS];
+- };
+- 
+-+struct hwsim_link_tx_stats {
+-+	const struct ieee80211_link_sta *link_sta;
+-+	u64 bytes[IEEE80211_NUM_ACS];
+-+	u32 packets[IEEE80211_NUM_ACS];
+-+	struct ieee80211_tx_rate last_rate;
+-+	enum nl80211_band band;
+-+};
+-+
+- struct hwsim_sta_priv {
+- 	u32 magic;
+- 	unsigned int last_link;
+- 	u16 active_links_rx;
+- 
+-+	/* mac80211 books TX on the default link only */
+-+	struct hwsim_link_tx_stats link_tx[IEEE80211_MLD_MAX_NUM_LINKS];
+-+	u16 link_tx_valid;
+-+
+- 	/* NAN peer schedule - must be accessed under nan_sched.lock */
+- 	struct hwsim_sta_nan_sched nan_sched;
+- };
+---- a/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+-+++ b/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+-@@ -2255,6 +2255,39 @@ static void mac80211_hwsim_tx_rate_fill(
+- 		mac80211_hwsim_tx_ht(rate, peer, bw);
+- }
+- 
+-+/* Counted as ieee80211_tx_h_stats() counts on the default link: the length
+-+ * before encryption, and one packet for all fragments of an MSDU.
+-+ */
+-+static void mac80211_hwsim_link_tx_account(struct ieee80211_link_sta *link_sta,
+-+					   struct sk_buff *skb, unsigned int len,
+-+					   enum nl80211_band band)
+-+{
+-+	struct hwsim_sta_priv *sp = (void *)link_sta->sta->drv_priv;
+-+	struct hwsim_link_tx_stats *stats = &sp->link_tx[link_sta->link_id];
+-+	struct ieee80211_tx_rate *rate = &IEEE80211_SKB_CB(skb)->control.rates[0];
+-+	struct ieee80211_hdr *hdr = (void *)skb->data;
+-+	int ac = skb_get_queue_mapping(skb);
+-+
+-+	/* mac80211 may not report the removal of a link added again */
+-+	if (READ_ONCE(stats->link_sta) != link_sta) {
+-+		memset(stats, 0, sizeof(*stats));
+-+		WRITE_ONCE(stats->link_sta, link_sta);
+-+	}
+-+
+-+	stats->bytes[ac] += len;
+-+	if (ieee80211_is_ctl(hdr->frame_control) ||
+-+	    ieee80211_is_first_frag(hdr->seq_ctrl))
+-+		stats->packets[ac]++;
+-+
+-+	if (!ieee80211_is_data(hdr->frame_control) || !ieee80211_rate_valid(rate))
+-+		return;
+-+
+-+	/* the reader takes no lock: a rate is never read against an older band */
+-+	WRITE_ONCE(stats->band, band);
+-+	smp_wmb();
+-+	stats->last_rate = *rate;
+-+}
+-+
+- static void mac80211_hwsim_tx(struct ieee80211_hw *hw,
+- 			      struct ieee80211_tx_control *control,
+- 			      struct sk_buff *skb)
+-@@ -2268,6 +2301,8 @@ static void mac80211_hwsim_tx(struct iee
+- 	struct ieee80211_vif *vif = txi->control.vif;
+- 	struct ieee80211_link_sta *peer =
+- 		control->sta ? &control->sta->deflink : NULL;
+-+	struct ieee80211_link_sta *tx_link_sta = NULL;
+-+	unsigned int tx_len = skb->len;
+- 	bool ack, unicast_data;
+- 	enum nl80211_chan_width confbw = NL80211_CHAN_WIDTH_20_NOHT;
+- 	u32 _portid, i;
+-@@ -2328,8 +2363,10 @@ static void mac80211_hwsim_tx(struct iee
+- 								 hdr, &link_sta);
+- 		}
+- 
+--		if (link_sta)
+-+		if (link_sta) {
+- 			peer = link_sta;
+-+			tx_link_sta = link_sta;
+-+		}
+- 
+- 		if (unlikely(!bss_conf)) {
+- 			/* if it's an MLO STA, it might have deactivated all
+-@@ -2424,6 +2461,10 @@ static void mac80211_hwsim_tx(struct iee
+- 			return;
+- 	}
+- 
+-+	if (tx_link_sta && control->sta->valid_links)
+-+		mac80211_hwsim_link_tx_account(tx_link_sta, skb, tx_len,
+-+					       channel->band);
+-+
+- 	/* wmediumd mode check */
+- 	_portid = READ_ONCE(data->wmediumd);
+- 
+-@@ -3030,6 +3071,7 @@ static int mac80211_hwsim_sta_add(struct
+- 		     sta->valid_links);
+- 		sp->active_links_rx = sta->valid_links;
+- 	}
+-+	sp->link_tx_valid = sta->valid_links;
+- 
+- 	spin_lock_init(&sp->nan_sched.lock);
+- 
+-@@ -3740,15 +3782,59 @@ static int mac80211_hwsim_change_sta_lin
+- 					   u16 old_links, u16 new_links)
+- {
+- 	struct hwsim_sta_priv *sp = (void *)sta->drv_priv;
+-+	unsigned long added = sta->valid_links & ~sp->link_tx_valid;
+-+	unsigned int link_id;
+- 
+- 	hwsim_check_sta_magic(sta);
+- 
+- 	if (vif->type == NL80211_IFTYPE_STATION)
+- 		sp->active_links_rx = new_links;
+- 
+-+	/* old_links and new_links hold active links only */
+-+	for_each_set_bit(link_id, &added, IEEE80211_MLD_MAX_NUM_LINKS)
+-+		memset(&sp->link_tx[link_id], 0, sizeof(sp->link_tx[link_id]));
+-+	sp->link_tx_valid = sta->valid_links;
+-+
+- 	return 0;
+- }
+- 
+-+static void
+-+mac80211_hwsim_link_sta_statistics(struct ieee80211_hw *hw,
+-+				   struct ieee80211_vif *vif,
+-+				   struct ieee80211_link_sta *link_sta,
+-+				   struct link_station_info *link_sinfo)
+-+{
+-+	struct hwsim_sta_priv *sp = (void *)link_sta->sta->drv_priv;
+-+	struct hwsim_link_tx_stats *stats = &sp->link_tx[link_sta->link_id];
+-+	struct ieee80211_tx_rate rate;
+-+	enum nl80211_band band;
+-+	int ac;
+-+
+-+	link_sinfo->tx_bytes = 0;
+-+	link_sinfo->tx_packets = 0;
+-+	link_sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_BYTES64) |
+-+			      BIT_ULL(NL80211_STA_INFO_TX_PACKETS);
+-+
+-+	if (READ_ONCE(stats->link_sta) != link_sta)
+-+		return;
+-+
+-+	for (ac = 0; ac < IEEE80211_NUM_ACS; ac++) {
+-+		link_sinfo->tx_bytes += stats->bytes[ac];
+-+		link_sinfo->tx_packets += stats->packets[ac];
+-+	}
+-+
+-+	rate = stats->last_rate;
+-+	smp_rmb();
+-+	band = READ_ONCE(stats->band);
+-+
+-+	if (!ieee80211_rate_valid(&rate))
+-+		return;
+-+
+-+	ieee80211_tx_rate_to_rate_info(hw->wiphy->bands[band], &rate,
+-+				       &link_sinfo->txrate);
+-+	link_sinfo->filled |= BIT_ULL(NL80211_STA_INFO_TX_BITRATE);
+-+}
+-+
+- static int mac80211_hwsim_send_pmsr_ftm_request_peer(struct sk_buff *msg,
+- 						     struct cfg80211_pmsr_ftm_request_peer *request)
+- {
+-@@ -4513,6 +4599,7 @@ static const struct ieee80211_ops mac802
+- 	HWSIM_CHANCTX_OPS
+- 	.change_vif_links = mac80211_hwsim_change_vif_links,
+- 	.change_sta_links = mac80211_hwsim_change_sta_links,
+-+	.link_sta_statistics = mac80211_hwsim_link_sta_statistics,
+- 	.sta_state = mac80211_hwsim_sta_state,
+- 	.can_neg_ttlm = mac80211_hwsim_can_neg_ttlm,
+- };
+diff --git a/package/kernel/mac80211/patches/subsys/420-wifi-mac80211_hwsim-free-a-frame-whose-rate-is-wider-than-the-channel.patch b/package/kernel/mac80211/patches/subsys/420-wifi-mac80211_hwsim-free-a-frame-whose-rate-is-wider-than-the-channel.patch
+deleted file mode 100644
+index 7790cfba..00000000
+--- a/package/kernel/mac80211/patches/subsys/420-wifi-mac80211_hwsim-free-a-frame-whose-rate-is-wider-than-the-channel.patch
++++ /dev/null
+@@ -1,29 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Thu, 1 Oct 2026 22:24:19 +0200
+-Subject: [PATCH] wifi: mac80211_hwsim: free a frame whose rate is wider than
+- the channel
+-
+-mac80211_hwsim_tx() warns and returns when a rate of the frame is wider
+-than the channel width in use, but does not free the frame, so it leaks
+-the skb and the frame never gets a TX status. Free it as the other drop
+-paths of the function do.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+- drivers/net/wireless/virtual/mac80211_hwsim_main.c | 4 +++-
+- 1 file changed, 3 insertions(+), 1 deletion(-)
+-
+---- a/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+-+++ b/drivers/net/wireless/virtual/mac80211_hwsim_main.c
+-@@ -2457,8 +2457,10 @@ static void mac80211_hwsim_tx(struct iee
+- 		else if (rflags & IEEE80211_TX_RC_160_MHZ_WIDTH)
+- 			bw = NL80211_CHAN_WIDTH_160;
+- 
+--		if (WARN_ON(hwsim_get_chanwidth(bw) > hwsim_get_chanwidth(confbw)))
+-+		if (WARN_ON(hwsim_get_chanwidth(bw) > hwsim_get_chanwidth(confbw))) {
+-+			ieee80211_free_txskb(hw, skb);
+- 			return;
+-+		}
+- 	}
+- 
+- 	if (tx_link_sta && control->sta->valid_links)
+diff --git a/package/kernel/mac80211/patches/subsys/421-wifi-mac80211-report-the-totals-of-an-MLO-station-when-it-is-removed.patch b/package/kernel/mac80211/patches/subsys/421-wifi-mac80211-report-the-totals-of-an-MLO-station-when-it-is-removed.patch
+deleted file mode 100644
+index 7887aae3..00000000
+--- a/package/kernel/mac80211/patches/subsys/421-wifi-mac80211-report-the-totals-of-an-MLO-station-when-it-is-removed.patch
++++ /dev/null
+@@ -1,72 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Thu, 1 Oct 2026 22:30:28 +0200
+-Subject: [PATCH] wifi: mac80211: report the totals of an MLO station when it
+- is removed
+-
+-The removal notification of a station carries its closing counters, and
+-userspace that keeps totals across a station's departure takes them
+-from there. For an MLO station they were the counters of the default
+-link alone: mac80211 filled the station info without links, so
+-sta_set_sinfo() dropped every link, and cfg80211_del_sta_sinfo() sent
+-it without the MLD aggregation that NL80211_CMD_GET_STATION applies.
+-The received counters of the other links and the counters of removed
+-links were missing.
+-
+-Fill the station info of a removed station as ieee80211_get_station()
+-does: allocate its links, then add the counters of removed links. Apply
+-cfg80211_sta_set_mld_sinfo() before the notification is sent. As in
+-NL80211_CMD_GET_STATION, a link whose interface link is already gone,
+-which is the case when the interface removes the link and flushes its
+-stations, or whose link info could not be allocated, is not counted.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+- net/mac80211/sta_info.c | 20 +++++++++++++++++++-
+- net/wireless/nl80211.c  |  3 +++
+- 2 files changed, 22 insertions(+), 1 deletion(-)
+-
+---- a/net/mac80211/sta_info.c
+-+++ b/net/mac80211/sta_info.c
+-@@ -1572,6 +1572,21 @@ int sta_info_move_state(struct sta_info
+- 	return _sta_info_move_state(sta, new_state, true);
+- }
+- 
+-+static void sta_set_removal_sinfo(struct sta_info *sta,
+-+				  struct station_info *sinfo)
+-+{
+-+	int link_id;
+-+
+-+	for (link_id = 0; link_id < IEEE80211_MLD_MAX_NUM_LINKS; link_id++)
+-+		if (sta->sta.valid_links & BIT(link_id))
+-+			sinfo->links[link_id] = kzalloc_obj(*sinfo->links[0]);
+-+
+-+	sta_set_sinfo(sta, sinfo, true);
+-+
+-+	if (sinfo->valid_links)
+-+		sta_set_accumulated_removed_links_sinfo(sta, sinfo);
+-+}
+-+
+- static void __sta_info_destroy_part2(struct sta_info *sta, bool recalc)
+- {
+- 	struct ieee80211_local *local = sta->local;
+-@@ -1627,7 +1642,7 @@ static void __sta_info_destroy_part2(str
+- 
+- 	sinfo = kzalloc_obj(*sinfo);
+- 	if (sinfo)
+--		sta_set_sinfo(sta, sinfo, true);
+-+		sta_set_removal_sinfo(sta, sinfo);
+- 
+- 	if (sta->uploaded) {
+- 		ret = drv_sta_state(local, sdata, sta, IEEE80211_STA_NONE,
+---- a/net/wireless/nl80211.c
+-+++ b/net/wireless/nl80211.c
+-@@ -21839,6 +21839,9 @@ void cfg80211_del_sta_sinfo(struct wirel
+- 		return;
+- 	}
+- 
+-+	if (sinfo->valid_links)
+-+		cfg80211_sta_set_mld_sinfo(sinfo);
+-+
+- 	if (nl80211_send_station(msg, NL80211_CMD_DEL_STATION, 0, 0, 0,
+- 				 rdev, wdev, mac_addr, sinfo) < 0) {
+- 		nlmsg_free(msg);
+diff --git a/package/kernel/mac80211/patches/subsys/422-wifi-mac80211-resolve-the-RX-link-of-each-station-on-its-own.patch b/package/kernel/mac80211/patches/subsys/422-wifi-mac80211-resolve-the-RX-link-of-each-station-on-its-own.patch
+deleted file mode 100644
+index d4645a98..00000000
+--- a/package/kernel/mac80211/patches/subsys/422-wifi-mac80211-resolve-the-RX-link-of-each-station-on-its-own.patch
++++ /dev/null
+@@ -1,157 +0,0 @@
+-From: Felix Fietkau <nbd@nbd.name>
+-Date: Thu, 8 Oct 2026 12:30:00 +0200
+-Subject: [PATCH] wifi: mac80211: resolve the RX link of each station on its
+- own
+-
+-When several stations match addr2 of a data frame, the loop in
+-__ieee80211_rx_handle_packet() delivers the frame to each of them and
+-resolves the link of an MLO station with link_sta_info_get_bss(). Two
+-things go wrong there:
+-
+-- If the lookup fails, the loop continues without moving prev_sta to
+-  the current station. Each later pass retries the same station, so no
+-  station after it gets the frame.
+-- The resolved link_id is kept for the stations that follow. A later
+-  non-MLO station then gets a link_id that is not in its valid_links,
+-  ieee80211_rx_data_set_link() fails and the frame is dropped.
+-
+-Resolve the link for each station on its own and skip only the station
+-whose link lookup fails. Use the same code for the station that the
+-driver passes, which resolves its link the same way.
+-
+-Signed-off-by: Felix Fietkau <nbd@nbd.name>
+----
+---- a/net/mac80211/rx.c
+-+++ b/net/mac80211/rx.c
+-@@ -5373,6 +5373,37 @@ static bool ieee80211_rx_for_link_sta(st
+- 	return ieee80211_prepare_and_rx_handle(rx, skb, consume);
+- }
+- 
+-+static bool ieee80211_rx_for_sta(struct ieee80211_rx_data *rx,
+-+				 struct sta_info *sta, struct sk_buff *skb,
+-+				 bool consume)
+-+{
+-+	struct ieee80211_rx_status *status = IEEE80211_SKB_RXCB(skb);
+-+	struct ieee80211_hdr *hdr = (void *)skb->data;
+-+	int link_id = -1;
+-+
+-+	/*
+-+	 * When the driver or hardware already translated the addresses, it
+-+	 * must pass the link_id in the status.
+-+	 */
+-+	rx->sdata = sta->sdata;
+-+	if (status->link_valid) {
+-+		link_id = status->link_id;
+-+	} else if (sta->sta.mlo) {
+-+		struct link_sta_info *link_sta;
+-+
+-+		link_sta = link_sta_info_get_bss(rx->sdata, hdr->addr2);
+-+		if (!link_sta)
+-+			return false;
+-+
+-+		link_id = link_sta->link_id;
+-+	}
+-+
+-+	if (!ieee80211_rx_data_set_sta(rx, sta, link_id))
+-+		return false;
+-+
+-+	return ieee80211_prepare_and_rx_handle(rx, skb, consume);
+-+}
+-+
+- /*
+-  * This is the actual Rx frames handler. as it belongs to Rx path it must
+-  * be called with rcu_read_lock protection.
+-@@ -5383,7 +5414,6 @@ static void __ieee80211_rx_handle_packet
+- 					 struct list_head *list)
+- {
+- 	struct ieee80211_local *local = hw_to_local(hw);
+--	struct ieee80211_rx_status *status = IEEE80211_SKB_RXCB(skb);
+- 	struct ieee80211_sub_if_data *sdata;
+- 	struct ieee80211_hdr *hdr;
+- 	__le16 fc;
+-@@ -5440,38 +5470,10 @@ static void __ieee80211_rx_handle_packet
+- 	if (ieee80211_is_data(fc)) {
+- 		struct link_sta_info *link_sta, *prev_link_sta;
+- 		struct sta_info *sta, *prev_sta;
+--		int link_id = -1;
+--
+--		if (status->link_valid)
+--			link_id = status->link_id;
+- 
+- 		if (pubsta) {
+- 			sta = container_of(pubsta, struct sta_info, sta);
+--			if (!ieee80211_rx_data_set_sta(&rx, sta, link_id))
+--				goto out;
+--
+--			/*
+--			 * In MLO connection, fetch the link_id using addr2
+--			 * when the driver does not pass link_id in status.
+--			 * When the address translation is already performed by
+--			 * driver/hw, the valid link_id must be passed in
+--			 * status.
+--			 */
+--
+--			if (!status->link_valid && pubsta->mlo) {
+--				struct link_sta_info *link_sta;
+--
+--				link_sta = link_sta_info_get_bss(rx.sdata,
+--								 hdr->addr2);
+--				if (!link_sta)
+--					goto out;
+--
+--				if (!ieee80211_rx_data_set_link(&rx,
+--								link_sta->link_id))
+--					goto out;
+--			}
+--
+--			if (ieee80211_prepare_and_rx_handle(&rx, skb, true))
+-+			if (ieee80211_rx_for_sta(&rx, sta, skb, true))
+- 				return;
+- 			goto out;
+- 		}
+-@@ -5484,43 +5486,13 @@ static void __ieee80211_rx_handle_packet
+- 				continue;
+- 			}
+- 
+--			rx.sdata = prev_sta->sdata;
+--			if (!status->link_valid && prev_sta->sta.mlo) {
+--				struct link_sta_info *link_sta;
+--
+--				link_sta = link_sta_info_get_bss(rx.sdata,
+--								 hdr->addr2);
+--				if (!link_sta)
+--					continue;
+--
+--				link_id = link_sta->link_id;
+--			}
+--
+--			if (!ieee80211_rx_data_set_sta(&rx, prev_sta, link_id))
+--				goto out;
+--
+--			ieee80211_prepare_and_rx_handle(&rx, skb, false);
+-+			ieee80211_rx_for_sta(&rx, prev_sta, skb, false);
+- 
+- 			prev_sta = sta;
+- 		}
+- 
+- 		if (prev_sta) {
+--			rx.sdata = prev_sta->sdata;
+--			if (!status->link_valid && prev_sta->sta.mlo) {
+--				struct link_sta_info *link_sta;
+--
+--				link_sta = link_sta_info_get_bss(rx.sdata,
+--								 hdr->addr2);
+--				if (!link_sta)
+--					goto out;
+--
+--				link_id = link_sta->link_id;
+--			}
+--
+--			if (!ieee80211_rx_data_set_sta(&rx, prev_sta, link_id))
+--				goto out;
+--
+--			if (ieee80211_prepare_and_rx_handle(&rx, skb, true))
+-+			if (ieee80211_rx_for_sta(&rx, prev_sta, skb, true))
+- 				return;
+- 			goto out;
+- 		}
 diff --git a/target/linux/qualcommbe/image/ipq95xx.mk b/target/linux/qualcommbe/image/ipq95xx.mk
 index faf468d3..8c0435cc 100644
 --- a/target/linux/qualcommbe/image/ipq95xx.mk
