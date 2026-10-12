@@ -1,4 +1,4 @@
-From 2979ef583f2b175d5a5160d682ccf787b31c3af8 Mon Sep 17 00:00:00 2001
+From 9fa22175cf960a555156fea611a42e7a6220fba8 Mon Sep 17 00:00:00 2001
 From: v8-build <v8@build>
 Date: Sun, 11 Oct 2026 18:30:17 +0000
 Subject: [PATCH 5/5] jidu6j11: v8 adjustments
@@ -11,7 +11,7 @@ Subject: [PATCH 5/5] jidu6j11: v8 adjustments
 - upgrade/uboot-env scripts match every jiorouter,ax6000-jidu6j11* board name
 ---
  package/firmware/ipq-wifi/Makefile            |   2 -
- package/firmware/jidu6j11-board-data/Makefile |  32 ++
+ package/firmware/jidu6j11-board-data/Makefile |  34 ++
  .../files/board-2.IPQ9574.bin                 | Bin 0 -> 131560 bytes
  .../files/board-2.QCN9074.bin                 | Bin 0 -> 131560 bytes
  package/kernel/mac80211/ath.mk                |   6 +-
@@ -172,7 +172,7 @@ Subject: [PATCH 5/5] jidu6j11: v8 adjustments
  ...e-RX-link-of-each-station-on-its-own.patch | 157 -------
  target/linux/qualcommbe/image/ipq95xx.mk      |   8 +-
  .../ipq95xx/base-files/etc/board.d/02_network |   1 +
- 162 files changed, 3108 insertions(+), 4545 deletions(-)
+ 162 files changed, 3110 insertions(+), 4545 deletions(-)
  create mode 100644 package/firmware/jidu6j11-board-data/Makefile
  create mode 100644 package/firmware/jidu6j11-board-data/files/board-2.IPQ9574.bin
  create mode 100644 package/firmware/jidu6j11-board-data/files/board-2.QCN9074.bin
@@ -265,10 +265,10 @@ index e050c748..011b9b36 100644
  $(eval $(call generate-ipq-wifi-package,linksys_mr5500,Linksys MR5500))
 diff --git a/package/firmware/jidu6j11-board-data/Makefile b/package/firmware/jidu6j11-board-data/Makefile
 new file mode 100644
-index 00000000..034596f0
+index 00000000..47c61d51
 --- /dev/null
 +++ b/package/firmware/jidu6j11-board-data/Makefile
-@@ -0,0 +1,32 @@
+@@ -0,0 +1,34 @@
 +include $(TOPDIR)/rules.mk
 +
 +PKG_NAME:=jidu6j11-board-data
@@ -294,10 +294,12 @@ index 00000000..034596f0
 +define Build/Compile
 +endef
 +
-+define Package/jidu6j11-board-data/install
++# install-overlay (as the ipq-wifi-* packages do): these files replace the
++# generic board-2.bin shipped by ath11k-firmware-ipq9574 / -qcn9074.
++define Package/jidu6j11-board-data/install-overlay
 +	$(INSTALL_DIR) $(1)/lib/firmware/ath11k/IPQ9574/hw1.0 $(1)/lib/firmware/ath11k/QCN9074/hw1.0
-+	$(INSTALL_DATA) ./files/board-2.IPQ9574.bin $(1)/lib/firmware/ath11k/IPQ9574/hw1.0/board-2.bin
-+	$(INSTALL_DATA) ./files/board-2.QCN9074.bin $(1)/lib/firmware/ath11k/QCN9074/hw1.0/board-2.bin
++	$(INSTALL_DATA) $(CURDIR)/files/board-2.IPQ9574.bin $(1)/lib/firmware/ath11k/IPQ9574/hw1.0/board-2.bin
++	$(INSTALL_DATA) $(CURDIR)/files/board-2.QCN9074.bin $(1)/lib/firmware/ath11k/QCN9074/hw1.0/board-2.bin
 +endef
 +
 +$(eval $(call BuildPackage,jidu6j11-board-data))
