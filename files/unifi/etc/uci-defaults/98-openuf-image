@@ -1,11 +1,11 @@
 #!/bin/sh
 # JIDU6J11 v8 (UniFi variant): openUF glue that has to run once.
-# The adopt-shell must be a valid login shell or dropbear refuses the ubnt
-# bootstrap login and UniFi adoption fails ("invalid shell").
 grep -qx /opt/openuf/hook/adopt-shell.sh /etc/shells 2>/dev/null \
 	|| echo /opt/openuf/hook/adopt-shell.sh >> /etc/shells
-# First-boot provisioning (installs openUF from /usr/share/openuf-src).
-/etc/init.d/openuf-firstboot enable
+
+# Enable openUF service directly
+[ -x /etc/init.d/openuf ] && /etc/init.d/openuf enable
+
 # Keep openUF's state and the Tailscale login across sysupgrade.
 for p in /opt/openuf/ /etc/openuf/ /etc/tailscale/; do
 	grep -qx "$p" /etc/sysupgrade.conf || echo "$p" >> /etc/sysupgrade.conf

@@ -2,12 +2,6 @@
 # openUF image: turn this JioRouter into a wired access point on its very first
 # boot, BEFORE the network comes up (uci-defaults run inside /etc/init.d/boot).
 #
-# Why here and not in setup.sh: a stock first boot is a router -- 192.168.1.1
-# with a DHCP server on every LAN socket. Plugged into an existing LAN that is a
-# rogue DHCP server from the first second. Converting before netifd starts means
-# the device never acts as a router at all, and any socket (WAN included) works
-# as the uplink.
-#
 # Runs once (uci-defaults are deleted after exit 0). Re-running is harmless.
 
 . /lib/functions.sh
@@ -45,9 +39,7 @@ for svc in firewall dnsmasq odhcpd mwan3; do
 	[ -x "/etc/init.d/$svc" ] && "/etc/init.d/$svc" disable
 done
 
-# ── Identity on the LAN (shows up in the UCG client / lease list) ────────────
-# JioIDU-AP-xxxx (last 4 hex digits of a burnt-in MAC) so several converted
-# IDUs are told apart in the UCG client and lease lists.
+# ── Identity on the LAN ───────────────────────────────────────────────────────
 SUFFIX=""
 for a in /sys/class/net/*/address; do
 	case "$a" in */lo/*) continue ;; esac
@@ -59,22 +51,29 @@ done
 uci -q set system.@system[0].hostname="JioIDU-AP${SUFFIX:+-$SUFFIX}"
 uci commit system
 
-# ── WiFi: radios on, but NO SSID on the air until the controller pushes one ──
-# 20-jiorouter-defaults creates an OPEN "OpenWrt" SSID on both radios, bridged
-# into lan. On an AP that would be an open door into the management VLAN, so
-# every pre-existing wifi-iface is switched off. openUF creates its own
-# openuf_* sections from the controller's WLANs (trojan, trojan_2).
+# ── WiFi: country US, radios on, 5GHz @ 160MHz, 2.4GHz @ 20MHz (Wi-Fi 6 HE20) ─
 for s in $(uci -q show wireless | sed -n "s/^wireless\.\([^.=]*\)=wifi-iface$/\1/p"); do
 	case "$s" in openuf_*) continue ;; esac
 	uci -q set "wireless.$s.disabled=1"
 done
 for r in $(uci -q show wireless | sed -n "s/^wireless\.\([^.=]*\)=wifi-device$/\1/p"); do
 	uci -q delete "wireless.$r.disabled"
-	# Regulatory domain PA (as board.d intends; 20-jiorouter-defaults strips
-	# it from pristine radios). openUF is also told --country PA, so the
-	# controller's site country does not replace it after adoption.
-	uci -q set "wireless.$r.country=PA"
+	uci -q set "wireless.$r.country=US"
+	
+	band=$(uci -q get "wireless.$r.band")
+	htmode=$(uci -q get "wireless.$r.htmode")
+	if [ "$band" = "5g" ] || [ "$band" = "6g" ] || echo "$htmode" | grep -qi "vht\|he80\|he160"; then
+		uci -q set "wireless.$r.htmode=HE160"
+	else
+		# 2.4GHz: Wi-Fi 6 (802.11ax) locked strictly to 20MHz (HE20)
+		uci -q set "wireless.$r.htmode=HE20"
+	fi
 done
 uci commit wireless
+
+# ── Services ──────────────────────────────────────────────────────────────────
+[ -x /etc/init.d/lldpd ] && /etc/init.d/lldpd enable
+[ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale enable
+[ -x /etc/init.d/openuf ] && /etc/init.d/openuf enable
 
 exit 0

@@ -1,5 +1,16 @@
-# JIDU6J11 v8: per-band overrides for openUF (see USAGE.md, "htmode_floor").
-# 2.4 GHz: run WiFi 6 (HE20) instead of WiFi 4 (HT20). openUF's hardware
-# clamp still runs afterwards, so if the radio does not report HE it stays HT.
+config openuf 'main'
+	option modelmap 'jiorouter-ax6000-jidu6j11'
+	option ufmodel 'auto'
+	option country_override 'US'
+	option l2_announce '1'
+	option use_only_unifi_wlan '1'
+
+# 2.4 GHz: Wi-Fi 6 (802.11ax) locked strictly to 20 MHz (HE20)
 config radio 'ng'
 	option htmode_floor 'HE20'
+	option htmode_max 'HE20'
+
+# 5 GHz: 160 MHz bandwidth (HE160)
+config radio 'na'
+	option htmode_floor 'HE160'
+	option htmode_max 'HE160'

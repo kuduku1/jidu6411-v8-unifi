@@ -1,6 +1,6 @@
 #!/bin/bash
 # Build JioRouter AX6000 JIDU6J11 (6411/6111) firmware v8.
-#   VARIANT=unifi ./build.sh   -> wired AP with openUF (UniFi), Tailscale on first boot
+#   VARIANT=unifi ./build.sh   -> wired AP with openUF (UniFi), Tailscale inside ROM
 #   VARIANT=stock ./build.sh   -> plain OpenWrt router + the same hardening
 # Optional: CHECK_ONLY=1 stops after 'make defconfig' (quick sanity check).
 set -euo pipefail
@@ -35,6 +35,8 @@ need 'CONFIG_PACKAGE_kmod-nft-bridge=y'
 need 'CONFIG_PACKAGE_kmod-sched-act-police=y'
 need 'CONFIG_PACKAGE_luci-ssl=y'
 need 'CONFIG_PACKAGE_wpad-mbedtls=y'
+need 'CONFIG_PACKAGE_tailscale=y'
+need 'CONFIG_PACKAGE_tailscaled=y'
 if [ "$VARIANT" = unifi ]; then
 	for p in lua lua-cjson luasocket lua-openssl luabitop libuci-lua tc-tiny; do need "CONFIG_PACKAGE_$p=y"; done
 fi
@@ -45,6 +47,15 @@ rm -rf files; mkdir -p files
 cp -a "$HERE/files/common/." files/
 cp -a "$HERE/files/$VARIANT/." files/
 find files -name .keep -delete
+
+if [ "$VARIANT" = unifi ]; then
+	mkdir -p files/usr/bin files/usr/sbin
+	ln -sf /opt/openuf/hook/syswrapper.sh files/usr/bin/syswrapper.sh
+	ln -sf /opt/openuf/hook/openuf-cli.sh files/usr/bin/openuf
+	ln -sf /opt/openuf/hook/openuf-convert.sh files/usr/sbin/openuf-convert
+	ln -sf /opt/openuf/hook/openuf-deps.sh files/usr/sbin/openuf-deps
+fi
+chmod 755 files/etc/init.d/* files/etc/uci-defaults/* 2>/dev/null || true
 
 make download -j8 || make download -j1 V=s
 make -j"$(nproc)" || make -j1 V=s
