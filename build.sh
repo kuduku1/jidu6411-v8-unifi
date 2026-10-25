@@ -36,7 +36,6 @@ need 'CONFIG_PACKAGE_kmod-sched-act-police=y'
 need 'CONFIG_PACKAGE_luci-ssl=y'
 need 'CONFIG_PACKAGE_wpad-mbedtls=y'
 need 'CONFIG_PACKAGE_tailscale=y'
-need 'CONFIG_PACKAGE_tailscaled=y'
 if [ "$VARIANT" = unifi ]; then
 	for p in lua lua-cjson luasocket lua-openssl luabitop libuci-lua tc-tiny; do need "CONFIG_PACKAGE_$p=y"; done
 fi
