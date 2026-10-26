@@ -6,6 +6,7 @@
 set -euo pipefail
 
 VARIANT="${VARIANT:-unifi}"
+VERSION="${VERSION:-v1.0.0}"
 case "$VARIANT" in unifi|stock) ;; *) echo "VARIANT must be unifi or stock" >&2; exit 1 ;; esac
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -67,7 +68,7 @@ cp -a $T/*.manifest $T/sha256sums $T/*.buildinfo $T/profiles.json "$OUT"/ 2>/dev
 tar -C $T -czf "$OUT/packages-$VARIANT.tar.gz" packages
 for f in "$OUT"/*sysupgrade*.bin; do
 	b=$(basename "$f")
-	mv "$f" "$OUT/${b%-squashfs-sysupgrade.bin}-v8-$VARIANT-squashfs-sysupgrade.bin"
+	mv "$f" "$OUT/${b%-squashfs-sysupgrade.bin}-$VERSION-$VARIANT-squashfs-sysupgrade.bin"
 done
-( cd "$OUT" && sha256sum *.bin *.itb 2>/dev/null > SHA256SUMS-v8-$VARIANT.txt || true )
+( cd "$OUT" && sha256sum *.bin *.itb 2>/dev/null > SHA256SUMS-$VERSION-$VARIANT.txt || true )
 ls -l "$OUT"

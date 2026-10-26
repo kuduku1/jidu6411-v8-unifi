@@ -1,13 +1,17 @@
-name: Build JIDU6J11 v8
+name: Build JIDU6J11 (Qualcomm 6411)
 
 on:
   workflow_dispatch:
     inputs:
+      version:
+        description: "Semantic version (e.g. v1.0.0, v1.0.1, v2.0.0)"
+        default: "v1.0.0"
+        required: true
       variant:
         description: Which image(s) to build
         type: choice
-        options: [both, unifi, stock]
-        default: both
+        options: [unifi, both, stock]
+        default: unifi
 
 jobs:
   build:
@@ -16,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: ${{ fromJSON(inputs.variant == 'both' && '["unifi","stock"]' || format('["{0}"]', inputs.variant)) }}
+        variant: ${{ fromJSON(inputs.variant == 'both' && '["unifi","stock"]' || format('["{0}"]', inputs.variant || 'unifi')) }}
     steps:
       - uses: actions/checkout@v5
 
@@ -36,12 +40,13 @@ jobs:
       - name: Build (${{ matrix.variant }})
         env:
           VARIANT: ${{ matrix.variant }}
+          VERSION: ${{ inputs.version || 'v1.0.0' }}
         run: bash ./build.sh
 
       - name: Upload firmware
         uses: actions/upload-artifact@v5
         with:
-          name: jidu6411-v8-${{ matrix.variant }}
+          name: jidu6411-${{ inputs.version || 'v1.0.0' }}-${{ matrix.variant }}
           path: out/${{ matrix.variant }}
           retention-days: 30
 
