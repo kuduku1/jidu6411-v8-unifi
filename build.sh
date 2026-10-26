@@ -68,7 +68,12 @@ cp -a $T/*.manifest $T/sha256sums $T/*.buildinfo $T/profiles.json "$OUT"/ 2>/dev
 tar -C $T -czf "$OUT/packages-$VARIANT.tar.gz" packages
 for f in "$OUT"/*sysupgrade*.bin; do
 	b=$(basename "$f")
-	mv "$f" "$OUT/${b%-squashfs-sysupgrade.bin}-$VERSION-$VARIANT-squashfs-sysupgrade.bin"
+	case "$b" in
+		*6411*) dev="6J6411" ;;
+		*6111*) dev="6J6111" ;;
+		*) dev="6J6411" ;;
+	esac
+	mv "$f" "$OUT/OpenCom-Qualcomm-$dev-$VERSION-$VARIANT-sysupgrade.bin"
 done
 ( cd "$OUT" && sha256sum *.bin *.itb 2>/dev/null > SHA256SUMS-$VERSION-$VARIANT.txt || true )
 ls -l "$OUT"
