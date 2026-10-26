@@ -71,11 +71,26 @@ for r in $(uci -q show wireless | sed -n "s/^wireless\.\([^.=]*\)=wifi-device$/\
 done
 uci commit wireless
 
-# ── Services ──────────────────────────────────────────────────────────────────
+# ── Root password: set to 'admin' ─────────────────────────────────────────────
+echo -e "admin\nadmin" | passwd root 2>/dev/null || true
+if command -v openssl >/dev/null 2>&1; then
+	H=$(openssl passwd -6 admin 2>/dev/null)
+	[ -n "$H" ] && sed -i "s|^root:[^:]*:|root:$H:|" /etc/shadow
+fi
+
+# ── Factory-default adoption account (ubnt/ubnt, UID 0, /bin/ash) ─────────────
 [ -f /etc/shells ] || touch /etc/shells
-for s in /opt/openuf/hook/adopt-shell.sh /usr/lib/openuf/hook/adopt-shell.sh; do
+for s in /bin/ash /bin/sh /opt/openuf/hook/adopt-shell.sh /usr/lib/openuf/hook/adopt-shell.sh; do
 	grep -q "$s" /etc/shells || echo "$s" >> /etc/shells
 done
+sed -i '/^ubnt:/d' /etc/passwd /etc/shadow 2>/dev/null || true
+echo 'ubnt:x:0:0:ubnt:/root:/bin/ash' >> /etc/passwd
+if command -v openssl >/dev/null 2>&1; then
+	UH=$(openssl passwd -6 ubnt 2>/dev/null)
+	echo "ubnt:$UH:19700:0:99999:7:::" >> /etc/shadow
+else
+	echo -e "ubnt\nubnt" | passwd ubnt 2>/dev/null || true
+fi
 
 # Direct LuCI access without portal gate interception
 uci set openuf.web=openuf
@@ -84,9 +99,11 @@ uci commit openuf
 uci set uhttpd.main.ucode_prefix='/usr/share/ucode/luci/uhttpd.uc'
 uci commit uhttpd
 
+# ── Services ──────────────────────────────────────────────────────────────────
 [ -x /etc/init.d/lldpd ] && /etc/init.d/lldpd enable
 [ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale enable
 [ -x /etc/init.d/openuf ] && /etc/init.d/openuf enable
+[ -x /etc/init.d/openuf-autodiscover ] && /etc/init.d/openuf-autodiscover enable
 [ -x /etc/init.d/openuf-rrb ] && /etc/init.d/openuf-rrb enable
 
 exit 0
