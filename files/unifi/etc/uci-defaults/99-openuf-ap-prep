@@ -72,8 +72,21 @@ done
 uci commit wireless
 
 # ── Services ──────────────────────────────────────────────────────────────────
+[ -f /etc/shells ] || touch /etc/shells
+for s in /opt/openuf/hook/adopt-shell.sh /usr/lib/openuf/hook/adopt-shell.sh; do
+	grep -q "$s" /etc/shells || echo "$s" >> /etc/shells
+done
+
+# Direct LuCI access without portal gate interception
+uci set openuf.web=openuf
+uci set openuf.web.portal='0'
+uci commit openuf
+uci set uhttpd.main.ucode_prefix='/usr/share/ucode/luci/uhttpd.uc'
+uci commit uhttpd
+
 [ -x /etc/init.d/lldpd ] && /etc/init.d/lldpd enable
 [ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale enable
 [ -x /etc/init.d/openuf ] && /etc/init.d/openuf enable
+[ -x /etc/init.d/openuf-rrb ] && /etc/init.d/openuf-rrb enable
 
 exit 0

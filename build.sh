@@ -53,6 +53,7 @@ if [ "$VARIANT" = unifi ]; then
 	ln -sf /opt/openuf/hook/openuf-cli.sh files/usr/bin/openuf
 	ln -sf /opt/openuf/hook/openuf-convert.sh files/usr/sbin/openuf-convert
 	ln -sf /opt/openuf/hook/openuf-deps.sh files/usr/sbin/openuf-deps
+	chmod 755 files/opt/openuf/hook/*.sh files/opt/openuf/rrb/*.uc 2>/dev/null || true
 fi
 chmod 755 files/etc/init.d/* files/etc/uci-defaults/* 2>/dev/null || true
 
