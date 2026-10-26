@@ -69,11 +69,11 @@ tar -C $T -czf "$OUT/packages-$VARIANT.tar.gz" packages
 for f in "$OUT"/*sysupgrade*.bin; do
 	b=$(basename "$f")
 	case "$b" in
-		*6411*) dev="6J6411" ;;
-		*6111*) dev="6J6111" ;;
-		*) dev="6J6411" ;;
+		*6411*) dev="jidu6j11" ;;
+		*6111*) dev="jidu6j11-6111" ;;
+		*) dev="jidu6j11" ;;
 	esac
-	mv "$f" "$OUT/OpenCom-Qualcomm-$dev-$VERSION-$VARIANT-sysupgrade.bin"
+	mv "$f" "$OUT/openwrt-qualcommbe-ipq95xx-$dev-$VERSION-$VARIANT.bin"
 done
 ( cd "$OUT" && sha256sum *.bin *.itb 2>/dev/null > SHA256SUMS-$VERSION-$VARIANT.txt || true )
 ls -l "$OUT"
