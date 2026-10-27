@@ -57,7 +57,7 @@ function seedFromStatus(status) {
 	for (const k of opts)
 		if (c[k] != null && c[k] !== '')
 			uci.set('openuf', 'main', k, String(c[k]));
-	const flags = [ 'use_only_unifi_wlan', 'l2_announce', 'rrm_enrichment', 'debug_dump_requests' ];
+	const flags = [ 'use_only_unifi_wlan', 'l2_announce', 'rrm_enrichment', 'debug_dump_requests', 'unifi_ft_interop' ];
 	for (const k of flags)
 		if (c[k] != null)
 			uci.set('openuf', 'main', k, c[k] ? '1' : '0');
@@ -267,9 +267,11 @@ return view.extend({
 		o = s.taboption('profile', form.ListValue, 'modelmap', _('Hardware profile'),
 			_('Describes this board to openUF: its Ethernet sockets, radios and status LED. "Automatic" picks the shipped profile made for this board, and openUF refuses to start rather than guess if none was made for it.') + lock);
 		o.value('auto', presets.auto ? _('Automatic (this board: %s)').format(presets.auto) : _('Automatic (no shipped profile matches this board)'));
+		// Just the product name: the board strings and the verification
+		// state are for contributors, and read as noise to someone picking
+		// their device.
 		for (const p of arr(presets.modelmaps))
-			o.value(p.name, '%s [%s]%s'.format(p.title, arr(p.boards).join(', ') || _('generic'),
-				p.unverified ? ' ' + _('(not yet verified on real hardware)') : ''));
+			o.value(p.name, p.title || p.name);
 		o.value('custom', _('Custom profile (the device, port, vlan and radio sections of /etc/config/openuf)'));
 		o.default = 'auto';
 		o.rmempty = false;
@@ -279,8 +281,7 @@ return view.extend({
 			_('The Ubiquiti access point the controller will believe this device is. "Automatic" is the profile\'s own choice. Match the hardware generation: a WiFi 5 board should present as a WiFi 5 model, a board with one radio as a single-radio model.') + lock);
 		o.value('auto', _('Automatic (the profile\'s choice)'));
 		for (const u of arr(presets.ufmodels))
-			o.value(u.name, '%s, model %s, firmware %s%s'.format(u.title, u.model || u.name, u.fw_ver || '?',
-				u.unverified ? ' ' + _('(not yet verified with a controller)') : ''));
+			o.value(u.name, u.title || u.name);
 		o.value('custom', _('Custom identity (the identity section of /etc/config/openuf)'));
 		o.default = 'auto';
 		o.rmempty = false;
@@ -319,6 +320,11 @@ return view.extend({
 			_('OpenWrt wireless section names (for example default_radio0) that stay enabled even with the option above ticked.'));
 		o.depends('use_only_unifi_wlan', '1');
 		o.datatype = 'uciname';
+
+		o = s.taboption('features', form.Flag, 'unifi_ft_interop', _('Fast roaming with genuine UniFi access points'),
+			_('Lets clients roam between this device and real UniFi access points without a full reconnect (802.11r). Needs the rrb-unifi translator installed on this device and its list of UniFi access points. Without the translator openUF access points still roam among themselves; turn this off only on a site that has real UniFi access points and no translator, where clients would otherwise try a fast roam towards them and fall back to a full reconnect.'));
+		o.default = '1';
+		o.rmempty = false;
 
 		o = s.taboption('features', form.Flag, 'rrm_enrichment', _('Ask clients to report nearby networks'),
 			_('Fills the controller\'s Environment view without taking the radios off their channels: one capable client at a time is asked to look around and report what it sees (802.11k).'));
@@ -365,6 +371,16 @@ return view.extend({
 		o.placeholder = '4194304';
 		o.datatype = 'uinteger';
 
+		// ── the device's own page: openuf.web, a section of its own (a `main`
+		// section means "UCI describes the daemon", see gate.uc) ──
+		const sweb = m.section(form.NamedSection, 'web', 'web', _('Device page'),
+			_('What a browser sees at this device\'s address. The device page shows the access point\'s state and where it is managed from, with openUF\'s settings behind the root password; LuCI is reached from there and offers "Exit LuCI mode" to go back.'));
+		sweb.addremove = false;
+		o = sweb.option(form.Flag, 'portal', _('Open the device page instead of LuCI'),
+			_('Turn off to have the address open LuCI directly, as on any OpenWrt device. Takes effect on the next page load.'));
+		o.default = '1';
+		o.rmempty = false;
+
 		// ── custom hardware profile: what the board reported, editable ──
 		const netdevs = arr(discover.netdevs).slice().sort(function(a, b) {
 			return (b.bridge ? 1 : 0) - (a.bridge ? 1 : 0) || a.name.localeCompare(b.name);
@@ -409,12 +425,21 @@ return view.extend({
 				(l.trigger != 'none' ? ' (' + _('trigger %s').format(l.trigger) + ')' : '')));
 		}
 
-		o = sd.option(form.MultiValue, 'hwassign', _('Radios reported to the controller'),
-			_('Tick the radios openUF should present and manage. A radio left out is never reported and never touched.'));
-		for (const r of arr(discover.radios))
-			if (r.uci)
+		// A picker with no choices makes LuCI's dropdown throw and takes the
+		// whole page down with it (seen on a board with no radio driver
+		// loaded): say so instead.
+		const radios = arr(discover.radios).filter(r => r.uci);
+		if (radios.length) {
+			o = sd.option(form.MultiValue, 'hwassign', _('Radios reported to the controller'),
+				_('Tick the radios openUF should present and manage. A radio left out is never reported and never touched.'));
+			for (const r of radios)
 				o.value(r.uci, '%s: %s, up to %s MHz%s'.format(r.uci, r.band, r.max_width || '?', r.he ? ', WiFi 6' : (r.vht ? ', WiFi 5' : ', WiFi 4')));
-		o.rmempty = true;
+			o.rmempty = true;
+		}
+		else {
+			o = sd.option(form.DummyValue, '_hwassign', _('Radios reported to the controller'));
+			o.default = _('No radio was found on this board: check that its WiFi driver is loaded (`wifi status`).');
+		}
 
 		o = sd.option(form.Value, 'lan_name', _('LAN network name'), _('The OpenWrt network the identity interface belongs to; "lan" on a stock configuration.'));
 		o.placeholder = 'lan';

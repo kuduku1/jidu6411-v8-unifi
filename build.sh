@@ -6,7 +6,7 @@
 set -euo pipefail
 
 VARIANT="${VARIANT:-unifi}"
-VERSION="${VERSION:-v1.0.0}"
+VERSION="${VERSION:-v1.0.1}"
 case "$VARIANT" in unifi|stock) ;; *) echo "VARIANT must be unifi or stock" >&2; exit 1 ;; esac
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -54,7 +54,7 @@ if [ "$VARIANT" = unifi ]; then
 	ln -sf /opt/openuf/hook/openuf-cli.sh files/usr/bin/openuf
 	ln -sf /opt/openuf/hook/openuf-convert.sh files/usr/sbin/openuf-convert
 	ln -sf /opt/openuf/hook/openuf-deps.sh files/usr/sbin/openuf-deps
-	chmod 755 files/opt/openuf/hook/*.sh files/opt/openuf/rrb/*.uc 2>/dev/null || true
+	chmod 755 files/opt/openuf/hook/*.sh files/opt/openuf/rrb/*.uc 2>/dev/null || true`n`tchmod 755 files/usr/lib/openuf/hook/*.sh files/usr/lib/openuf/rrb/*.uc 2>/dev/null || true
 fi
 chmod 755 files/etc/init.d/* files/etc/uci-defaults/* files/usr/bin/* files/usr/sbin/* 2>/dev/null || true
 

@@ -5,7 +5,7 @@ on:
     inputs:
       version:
         description: "Semantic version (e.g. v1.0.0, v1.0.1, v2.0.0)"
-        default: "v1.0.0"
+        default: "v1.0.1"
         required: true
       variant:
         description: Which image(s) to build

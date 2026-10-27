@@ -15,8 +15,12 @@
 	  tl-wdr3500-v1.lua                  TP-Link TL-WDR3500 v1  (swconfig, 2-band)
 	  tl-wr1043ndv2.lua                  TP-Link WR1043ND v2    (swconfig, 1-band)
 	  archer-a7-v5.lua                   TP-Link Archer A7 v5 / C7 v4 / C7 v5 (swconfig, 2-band; ⚠️ unverified)
+	  deco-m5.lua                        TP-Link Deco M5 v1 / v2 / v3 (DSA, 2-band, 2 sockets; ⚠️ unverified)
+	  deco-m4r-v1.lua                    TP-Link Deco M4R v1 / v2 (swconfig, 2-band, 2 sockets, no WAN role; ⚠️ unverified)
+	  deco-m4r-v4.lua                    TP-Link Deco M4R v4 (DSA, 2-band, 2 sockets named eth0/eth1; ⚠️ unverified)
 	  jiorouter-ax6000-jidu6101.lua      JioRouter AX6000       (DSA, 2-band)
 	  jiorouter-ax6000-jidu6j01.lua      JioRouter AX6000 J-fam (DSA, 2-band)
+	  dynalink-dl-wrx36.lua              Dynalink DL-WRX36      (DSA, 2-band, 5 sockets; ⚠️ unverified)
 	  xiaomi-ax3000t.lua                 Xiaomi Mi Router AX3000T (DSA, 2-band)
 	  generic-dualband-ap.lua            any other dual-band swconfig board
 	  generic-singleband-ap.lua          any other single-band swconfig board
@@ -36,6 +40,8 @@
 	  u6iw.lua  — presents as U6-InWall (U6IW)  ← default for AP emulation
 	  uhdiw.lua — presents as UAP-IW-HD (UHDIW), the WiFi 5 in-wall with the
 	              same five sockets ← the Archer A7/C7 map; ⚠️ not yet adopted
+	  u7hd.lua  — presents as UAP-AC-HD (U7HD), the WiFi 5 ceiling AP with
+	              two sockets ← the Deco M5 and M4R maps; ⚠️ adopted once (M4R v1)
 	  uapg1.lua — presents as UAP Gen1
 	  uapg2-ac-lr.lua — presents as UAP-AC-LR
 
@@ -61,6 +67,21 @@ config = {
 	-- AP-mode SSID you want kept regardless. A listed section openUF had
 	-- already switched off is switched back on.
 	keep_wlan_sections = {},
+
+	-- 802.11r fast roaming with genuine UniFi APs (ftinterop.lua). Needs the
+	-- rrb-unifi translator (github.com/d-malinowski/unifi-openwrt-roaming),
+	-- which converts between OpenWrt's and UniFi's inter-AP key-exchange
+	-- framing on a veth pair, and its /etc/config/rrb-unifi peer list
+	-- (`rrb-unifi-setup peers`). When on, every FT WLAN uses UniFi's
+	-- mobility domain, ft_psk_generate_local=0 with explicit key holders for
+	-- the listed UniFi peers, nas_identifier = BSSID, and hostapd's ft_iface
+	-- on the translator's veth (only when that veth exists). On by default
+	-- for new installations: without the translator openUF APs still roam
+	-- among themselves, and a site with no UniFi AP notices nothing. Set
+	-- false on a site that has genuine UniFi APs but no translator: openUF's
+	-- own mobility domain then keeps clients from trying a fast transition
+	-- towards them that can only fall back to a full reconnect.
+	unifi_ft_interop = true,
 
 	-- URL the inform loop posts to.  Overwritten at runtime when the controller
 	-- sends a new URL or when syswrapper.sh set-inform is called.
@@ -159,9 +180,20 @@ config = {
 	rrm_enrichment = true,
 
 	-- Seconds between beacon requests, across all radios and clients combined
-	-- (they are asked one at a time, round-robin). Deliberately slow: the
-	-- point is to keep the Environment view honest, not to poll.
+	-- (they are asked one at a time, round-robin). Deliberately slow: the point
+	-- is to keep the Environment tab honest, not to poll. Each answer also puts
+	-- ~15 long BEACON-RESP-RX lines in hostapd's syslog, so a short interval
+	-- crowds everything else out of logread.
 	rrm_request_interval = 600,
+
+	-- WiFi Connectivity (controller: Insights -> AirView -> Connectivity): report
+	-- each client connection's Association / Authentication / DHCP / DNS stages,
+	-- the way a UniFi AP does, when the controller asks for them (it does). Reads
+	-- hostapd's connect events and installs one passive nft table
+	-- (`bridge openuf_assoc`) that only records first-seen DHCP/DNS frames per
+	-- station; it never drops or alters traffic. Set false to send nothing and
+	-- remove the table.
+	assoc_tracker = true,
 
 	-- Roaming Assistant (controller: WLAN -> Advanced, 5 GHz): how much louder,
 	-- in dB, another AP must hear a weak client before openUF moves it there.
