@@ -1,6 +1,9 @@
 name: Build JIDU6J11 (Qualcomm 6411)
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       version:
