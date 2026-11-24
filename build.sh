@@ -39,7 +39,6 @@ need 'CONFIG_PACKAGE_wpad-mbedtls=y'
 need 'CONFIG_PACKAGE_tailscale=y'
 if [ "$VARIANT" = stock ]; then
 	need 'CONFIG_PACKAGE_adguardhome=y'
-	need 'CONFIG_PACKAGE_luci-app-adguardhome=y'
 	need 'CONFIG_PACKAGE_kmod-usb-storage=y'
 	need 'CONFIG_PACKAGE_kmod-usb-storage-uas=y'
 	need 'CONFIG_PACKAGE_kmod-fs-ext4=y'
