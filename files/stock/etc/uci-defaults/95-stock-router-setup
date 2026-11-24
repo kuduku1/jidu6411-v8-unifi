@@ -127,4 +127,11 @@ chmod +x /etc/hotplug.d/net/40-usb-tether 2>/dev/null || true
 
 [ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 enable
 
+# ── 8. Network LED Watchdog ──
+chmod +x /usr/sbin/network-led-watchdog 2>/dev/null || true
+chmod +x /etc/init.d/network-led-watchdog 2>/dev/null || true
+chmod +x /etc/hotplug.d/iface/99-network-led 2>/dev/null || true
+
+[ -x /etc/init.d/network-led-watchdog ] && /etc/init.d/network-led-watchdog enable
+
 exit 0

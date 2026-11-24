@@ -1,0 +1,6 @@
+#!/bin/sh
+# Hotplug iface trigger for instantaneous LED state updates
+
+if [ -x /usr/sbin/network-led-watchdog ]; then
+	/usr/sbin/network-led-watchdog --once &
+fi

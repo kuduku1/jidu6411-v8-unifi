@@ -1,0 +1,143 @@
+#!/bin/sh
+# network-led-watchdog:
+# Controls RGB Status LED according to network connection & cable state:
+#  - Green:        Main connection works (WAN1 is online)
+#  - Solid Blue:   Phone tether is carrying traffic & WAN cable is plugged in
+#  - Blinking Blue: Phone tether is carrying traffic & WAN cable is unplugged
+#  - Solid Red:    No connection at all & WAN cable is plugged in
+#  - Blinking Red: No connection at all & WAN cable is unplugged
+
+LED_RED=$(ls -d /sys/class/leds/*red* 2>/dev/null | head -n1)
+LED_GREEN=$(ls -d /sys/class/leds/*green* 2>/dev/null | head -n1)
+LED_BLUE=$(ls -d /sys/class/leds/*blue* 2>/dev/null | head -n1)
+
+led_off() {
+	local led="$1"
+	[ -n "$led" ] && [ -d "$led" ] || return 0
+	echo none > "$led/trigger" 2>/dev/null || true
+	echo 0 > "$led/brightness" 2>/dev/null || true
+}
+
+led_solid() {
+	local led="$1"
+	[ -n "$led" ] && [ -d "$led" ] || return 0
+	echo none > "$led/trigger" 2>/dev/null || true
+	echo 255 > "$led/brightness" 2>/dev/null || true
+}
+
+led_blink() {
+	local led="$1"
+	[ -n "$led" ] && [ -d "$led" ] || return 0
+	echo timer > "$led/trigger" 2>/dev/null || true
+	echo 500 > "$led/delay_on" 2>/dev/null || true
+	echo 500 > "$led/delay_off" 2>/dev/null || true
+}
+
+apply_led_state() {
+	local color="$1"
+	local mode="$2"
+
+	[ "$color" != "red" ] && led_off "$LED_RED"
+	[ "$color" != "green" ] && led_off "$LED_GREEN"
+	[ "$color" != "blue" ] && led_off "$LED_BLUE"
+
+	case "$color" in
+		green)
+			[ "$mode" = "blink" ] && led_blink "$LED_GREEN" || led_solid "$LED_GREEN"
+			;;
+		blue)
+			[ "$mode" = "blink" ] && led_blink "$LED_BLUE" || led_solid "$LED_BLUE"
+			;;
+		red)
+			[ "$mode" = "blink" ] && led_blink "$LED_RED" || led_solid "$LED_RED"
+			;;
+	esac
+}
+
+check_and_update() {
+	# 1. Determine WAN physical device and cable carrier
+	WAN_DEV=$(uci -q get network.wan.device)
+	[ -z "$WAN_DEV" ] && WAN_DEV="wan"
+
+	CABLE_IN=0
+	if [ -f "/sys/class/net/$WAN_DEV/carrier" ]; then
+		[ "$(cat "/sys/class/net/$WAN_DEV/carrier" 2>/dev/null)" = "1" ] && CABLE_IN=1
+	elif [ -f "/sys/class/net/eth0/carrier" ]; then
+		[ "$(cat "/sys/class/net/eth0/carrier" 2>/dev/null)" = "1" ] && CABLE_IN=1
+	fi
+
+	# 2. Check WAN1 Online Status
+	WAN_ONLINE=0
+	if command -v mwan3 >/dev/null 2>&1; then
+		if mwan3 status 2>/dev/null | grep -qi "interface wan is online"; then
+			WAN_ONLINE=1
+		fi
+	fi
+	# Fallback probe if mwan3 not yet ready
+	if [ "$WAN_ONLINE" -eq 0 ] && [ "$CABLE_IN" -eq 1 ]; then
+		if ping -c 1 -W 1 -I "$WAN_DEV" 1.1.1.1 >/dev/null 2>&1 || ping -c 1 -W 1 -I "$WAN_DEV" 8.8.8.8 >/dev/null 2>&1; then
+			WAN_ONLINE=1
+		fi
+	fi
+
+	# 3. Check Phone Tether Online Status
+	TETHER_ONLINE=0
+	TETHER_DEV=$(uci -q get network.tether.device)
+	[ -z "$TETHER_DEV" ] && TETHER_DEV="usb0"
+
+	if command -v mwan3 >/dev/null 2>&1; then
+		if mwan3 status 2>/dev/null | grep -qi "interface tether is online"; then
+			TETHER_ONLINE=1
+		fi
+	fi
+	# Fallback probe if mwan3 not yet ready
+	if [ "$TETHER_ONLINE" -eq 0 ] && [ -d "/sys/class/net/$TETHER_DEV" ]; then
+		if ping -c 1 -W 1 -I "$TETHER_DEV" 1.0.0.1 >/dev/null 2>&1 || ping -c 1 -W 1 -I "$TETHER_DEV" 9.9.9.9 >/dev/null 2>&1; then
+			TETHER_ONLINE=1
+		fi
+	fi
+
+	# 4. Determine Target Color and Mode
+	if [ "$WAN_ONLINE" -eq 1 ]; then
+		# Green: Main connection works
+		TARGET_COLOR="green"
+		TARGET_MODE="solid"
+	elif [ "$TETHER_ONLINE" -eq 1 ]; then
+		# Blue: Phone tether carrying traffic
+		TARGET_COLOR="blue"
+		if [ "$CABLE_IN" -eq 1 ]; then
+			TARGET_MODE="solid"
+		else
+			TARGET_MODE="blink"
+		fi
+	else
+		# Red: No connection at all
+		TARGET_COLOR="red"
+		if [ "$CABLE_IN" -eq 1 ]; then
+			TARGET_MODE="solid"
+		else
+			TARGET_MODE="blink"
+		fi
+	fi
+
+	STATE_KEY="${TARGET_COLOR}_${TARGET_MODE}"
+	if [ "$STATE_KEY" != "$LAST_STATE" ]; then
+		apply_led_state "$TARGET_COLOR" "$TARGET_MODE"
+		LAST_STATE="$STATE_KEY"
+		logger -t network-led "LED updated: $TARGET_COLOR ($TARGET_MODE) [WAN=$WAN_ONLINE, Tether=$TETHER_ONLINE, Cable=$CABLE_IN]"
+	fi
+}
+
+# Run once mode (for hotplug triggers)
+if [ "$1" = "--once" ] || [ "$1" = "once" ]; then
+	LAST_STATE=""
+	check_and_update
+	exit 0
+fi
+
+# Daemon loop
+LAST_STATE=""
+while true; do
+	check_and_update
+	sleep 2
+done

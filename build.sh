@@ -60,8 +60,7 @@ cp -a "$HERE/files/$VARIANT/." files/
 find files -name .keep -delete
 chmod +x files/etc/uci-defaults/* 2>/dev/null || true
 chmod +x files/usr/sbin/* 2>/dev/null || true
-chmod +x files/etc/hotplug.d/block/* 2>/dev/null || true
-chmod +x files/etc/hotplug.d/net/* 2>/dev/null || true
+chmod +x files/etc/hotplug.d/*/* 2>/dev/null || true
 chmod +x files/etc/init.d/* 2>/dev/null || true
 
 if [ "$VARIANT" = unifi ]; then
