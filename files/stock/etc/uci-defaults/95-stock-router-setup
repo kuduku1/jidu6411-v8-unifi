@@ -63,10 +63,9 @@ fi
 uci commit wireless
 
 # ── 4. DNS Architecture (dnsmasq -> AdGuard Home on 5335 with fallback) ──
-# Disable resolvd file fetching from ISP WAN so dnsmasq exclusively uses AdGuard + fallback
-uci -q set dhcp.@dnsmasq[0].noresolv='1'
-# Query servers in order (AdGuard first, then fallback)
-uci -q set dhcp.@dnsmasq[0].strictorder='1'
+# Disable strictorder so dnsmasq queries fallback without hanging if AdGuard Home is busy/starting
+uci -q delete dhcp.@dnsmasq[0].strictorder
+uci -q set dhcp.@dnsmasq[0].allservers='0'
 # Rebind protection allows local IP resolution from upstream if needed
 uci -q set dhcp.@dnsmasq[0].rebind_protection='0'
 
@@ -75,11 +74,12 @@ while uci -q delete dhcp.@dnsmasq[0].server; do :; done
 
 # Primary resolver: AdGuard Home (local loopback port 5335)
 uci add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'
-# Backup resolvers: Cloudflare and Quad9 IPv4 & IPv6
+# Fast backup resolvers: Cloudflare, Google, and Quad9
 uci add_list dhcp.@dnsmasq[0].server='1.1.1.1'
+uci add_list dhcp.@dnsmasq[0].server='8.8.8.8'
 uci add_list dhcp.@dnsmasq[0].server='9.9.9.9'
 uci add_list dhcp.@dnsmasq[0].server='2606:4700:4700::1111'
-uci add_list dhcp.@dnsmasq[0].server='2620:fe::fe'
+uci add_list dhcp.@dnsmasq[0].server='2001:4860:4860::8888'
 
 uci commit dhcp
 
@@ -172,5 +172,13 @@ uci -q commit firewall
 
 # ── 11. Samba 4 (NAS File Sharing for USB Storage) ──
 [ -x /etc/init.d/samba4 ] && /etc/init.d/samba4 enable
+
+# ── 12. uHTTPd Anti-Hang Fix (Zero Keepalive Stalls for Instant LuCI Loading) ──
+uci -q set uhttpd.main.http_keepalive='0'
+uci -q commit uhttpd
+
+# ── 13. Tailscale Firewall Mode (nftables compatibility) ──
+uci -q set tailscale.settings.fw_mode='nftables'
+uci -q commit tailscale
 
 exit 0

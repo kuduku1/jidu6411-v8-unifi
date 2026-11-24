@@ -37,6 +37,7 @@ need 'CONFIG_PACKAGE_kmod-sched-act-police=y'
 need 'CONFIG_PACKAGE_luci-ssl=y'
 need 'CONFIG_PACKAGE_wpad-mbedtls=y'
 need 'CONFIG_PACKAGE_tailscale=y'
+need 'CONFIG_PACKAGE_iptables-nft=y'
 if [ "$VARIANT" = stock ]; then
 	need 'CONFIG_PACKAGE_adguardhome=y'
 	need 'CONFIG_PACKAGE_kmod-usb-storage=y'
