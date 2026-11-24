@@ -26,8 +26,9 @@ jobs:
           inputs.variant == 'all' && '["stock-fast","stock-adguard","unifi"]' ||
           inputs.variant == 'both-stock' && '["stock-fast","stock-adguard"]' ||
           inputs.variant == 'stock-adguard' && '["stock-adguard"]' ||
+          inputs.variant == 'stock-fast' && '["stock-fast"]' ||
           inputs.variant == 'unifi' && '["unifi"]' ||
-          '["stock-fast"]'
+          '["stock-fast","stock-adguard"]'
           ) }}
     steps:
       - uses: actions/checkout@v5
