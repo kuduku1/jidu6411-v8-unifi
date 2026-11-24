@@ -57,11 +57,40 @@ if [ -n "$DEV_2G" ]; then
 	uci set wireless.@wifi-iface[-1].device="$DEV_2G"
 	uci set wireless.@wifi-iface[-1].network='lan'
 	uci set wireless.@wifi-iface[-1].mode='ap'
-	uci set wireless.@wifi-iface[-1].ssid='ODU 2'
+	uci set wireless.@wifi-iface[-1].ssid='ODU2'
 	uci set wireless.@wifi-iface[-1].encryption='none'
 fi
 
 uci commit wireless
+
+# ── 4. Static DHCP Leases ──
+add_static_lease() {
+	local name="$1"
+	local mac="$2"
+	local ip="$3"
+	
+	# Delete any existing lease for this IP or MAC to avoid duplicates
+	for s in $(uci -q show dhcp | sed -n "s/^dhcp\.@host\[\([0-9]*\)\].*$/\1/p" | sort -ru); do
+		cur_mac=$(uci -q get "dhcp.@host[$s].mac")
+		cur_ip=$(uci -q get "dhcp.@host[$s].ip")
+		if [ "$cur_mac" = "$mac" ] || [ "$cur_ip" = "$ip" ]; then
+			uci -q delete "dhcp.@host[$s]"
+		fi
+	done
+	
+	uci add dhcp host >/dev/null
+	uci set dhcp.@host[-1].name="$name"
+	uci set dhcp.@host[-1].mac="$mac"
+	uci set dhcp.@host[-1].ip="$ip"
+}
+
+add_static_lease "HP-VIJ" "AC:F4:66:C8:5A:AF" "192.168.1.100"
+add_static_lease "Google-Home-Mini" "44:07:0B:D7:70:CB" "192.168.1.200"
+add_static_lease "Galaxy-Tab-A11-5G" "56:6D:08:BC:57:24" "192.168.1.104"
+add_static_lease "Vijay-s-S23U" "B4:0B:1D:08:B3:37" "192.168.1.102"
+add_static_lease "HP-VIJ" "F0:68:E3:DD:00:2A" "192.168.1.101"
+
+uci commit dhcp
 
 # ── 4. Storage & Mount Points (fstab auto-mount for USB pendrives and SSDs) ──
 uci -q set fstab.@global[0].anon_mount='1'
