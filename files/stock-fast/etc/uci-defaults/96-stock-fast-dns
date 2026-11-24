@@ -1,0 +1,28 @@
+#!/bin/sh
+# JioRouter AX6000 JIDU6J11 (Stock Fast Variant): DNS & Adblock setup
+# - Native dnsmasq upstream resolvers (direct, low RAM footprint)
+# - Enable adblock-fast service
+
+. /lib/functions.sh
+
+# ── DNS Architecture for stock-fast (dnsmasq standalone with fast upstreams) ──
+uci -q delete dhcp.@dnsmasq[0].strictorder
+uci -q set dhcp.@dnsmasq[0].allservers='0'
+uci -q set dhcp.@dnsmasq[0].rebind_protection='0'
+
+# Clear default server list
+while uci -q delete dhcp.@dnsmasq[0].server; do :; done
+
+# Upstream resolvers: Cloudflare, Google, Quad9, and IPv6 twins
+uci add_list dhcp.@dnsmasq[0].server='1.1.1.1'
+uci add_list dhcp.@dnsmasq[0].server='8.8.8.8'
+uci add_list dhcp.@dnsmasq[0].server='9.9.9.9'
+uci add_list dhcp.@dnsmasq[0].server='2606:4700:4700::1111'
+uci add_list dhcp.@dnsmasq[0].server='2001:4860:4860::8888'
+
+uci commit dhcp
+
+# ── Enable Adblock-Fast ──
+[ -x /etc/init.d/adblock-fast ] && /etc/init.d/adblock-fast enable
+
+exit 0

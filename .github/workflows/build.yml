@@ -6,14 +6,14 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Semantic version (e.g. v1.0.0, v1.0.1, v2.0.0)"
-        default: "v1.0.1"
+        description: "Semantic version (e.g. v1.0.0, v1.0.1, v1.0.2)"
+        default: "v1.0.2"
         required: true
       variant:
         description: Which image(s) to build
         type: choice
-        options: [unifi, both, stock]
-        default: stock
+        options: [stock-fast, stock-adguard, both-stock, unifi, all]
+        default: stock-fast
 
 jobs:
   build:
@@ -22,7 +22,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: ${{ fromJSON(inputs.variant == 'both' && '["unifi","stock"]' || inputs.variant == 'unifi' && '["unifi"]' || '["stock"]') }}
+        variant: ${{ fromJSON(
+          inputs.variant == 'all' && '["stock-fast","stock-adguard","unifi"]' ||
+          inputs.variant == 'both-stock' && '["stock-fast","stock-adguard"]' ||
+          inputs.variant == 'stock-adguard' && '["stock-adguard"]' ||
+          inputs.variant == 'unifi' && '["unifi"]' ||
+          '["stock-fast"]'
+          ) }}
     steps:
       - uses: actions/checkout@v5
 
@@ -42,13 +48,13 @@ jobs:
       - name: Build (${{ matrix.variant }})
         env:
           VARIANT: ${{ matrix.variant }}
-          VERSION: ${{ inputs.version || 'v1.0.1' }}
+          VERSION: ${{ inputs.version || 'v1.0.2' }}
         run: bash ./build.sh
 
       - name: Upload firmware
         uses: actions/upload-artifact@v5
         with:
-          name: jidu6411-${{ inputs.version || 'v1.0.0' }}-${{ matrix.variant }}
+          name: jidu6411-${{ inputs.version || 'v1.0.2' }}-${{ matrix.variant }}
           path: out/${{ matrix.variant }}
           retention-days: 30
 

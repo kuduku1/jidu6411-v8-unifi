@@ -1,13 +1,18 @@
 #!/bin/bash
 # Build JioRouter AX6000 JIDU6J11 (6411/6111) firmware v8.
-#   VARIANT=unifi ./build.sh   -> wired AP with openUF (UniFi), Tailscale inside ROM
-#   VARIANT=stock ./build.sh   -> plain OpenWrt router + the same hardening
+#   VARIANT=stock-fast    -> Recommended daily driver with native adblock-fast (~3MB RAM)
+#   VARIANT=stock-adguard -> AdGuard Home variant (requires USB SSD)
+#   VARIANT=unifi         -> Wired AP with openUF (UniFi), Tailscale inside ROM
 # Optional: CHECK_ONLY=1 stops after 'make defconfig' (quick sanity check).
 set -euo pipefail
 
-VARIANT="${VARIANT:-unifi}"
-VERSION="${VERSION:-v1.0.1}"
-case "$VARIANT" in unifi|stock) ;; *) echo "VARIANT must be unifi or stock" >&2; exit 1 ;; esac
+VARIANT="${VARIANT:-stock-fast}"
+VERSION="${VERSION:-v1.0.2}"
+case "$VARIANT" in
+	unifi|stock-fast|stock-adguard) ;;
+	stock) VARIANT="stock-fast" ;;
+	*) echo "VARIANT must be stock-fast, stock-adguard, or unifi" >&2; exit 1 ;;
+esac
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PIN="$(cat "$HERE/openwrt.pin")"
@@ -39,8 +44,10 @@ need 'CONFIG_PACKAGE_luci-ssl=y'
 need 'CONFIG_PACKAGE_wpad-mbedtls=y'
 need 'CONFIG_PACKAGE_tailscale=y'
 need 'CONFIG_PACKAGE_iptables-nft=y'
-if [ "$VARIANT" = stock ]; then
-	need 'CONFIG_PACKAGE_adguardhome=y'
+if [ "$VARIANT" = "stock-fast" ] || [ "$VARIANT" = "stock-adguard" ]; then
+	[ "$VARIANT" = "stock-adguard" ] && need 'CONFIG_PACKAGE_adguardhome=y'
+	[ "$VARIANT" = "stock-fast" ] && need 'CONFIG_PACKAGE_adblock-fast=y'
+	[ "$VARIANT" = "stock-fast" ] && need 'CONFIG_PACKAGE_luci-app-adblock-fast=y'
 	need 'CONFIG_PACKAGE_kmod-usb-storage=y'
 	need 'CONFIG_PACKAGE_kmod-usb-storage-uas=y'
 	need 'CONFIG_PACKAGE_kmod-fs-ext4=y'
@@ -61,7 +68,12 @@ fi
 # Image overlay: common hardening + the variant's files.
 rm -rf files; mkdir -p files
 cp -a "$HERE/files/common/." files/
-cp -a "$HERE/files/$VARIANT/." files/
+if [ "$VARIANT" = "stock-fast" ] || [ "$VARIANT" = "stock-adguard" ]; then
+	[ -d "$HERE/files/stock-common" ] && cp -a "$HERE/files/stock-common/." files/
+	[ -d "$HERE/files/$VARIANT" ] && cp -a "$HERE/files/$VARIANT/." files/
+else
+	[ -d "$HERE/files/$VARIANT" ] && cp -a "$HERE/files/$VARIANT/." files/
+fi
 find files -name .keep -delete
 find files -type f -exec sed -i -e 's/^\xef\xbb\xbf//' -e 's/\r$//' {} + 2>/dev/null || true
 chmod +x files/etc/uci-defaults/* 2>/dev/null || true
@@ -75,7 +87,7 @@ if [ "$VARIANT" = unifi ]; then
 	ln -sf /opt/openuf/hook/openuf-cli.sh files/usr/bin/openuf
 	ln -sf /opt/openuf/hook/openuf-convert.sh files/usr/sbin/openuf-convert
 	ln -sf /opt/openuf/hook/openuf-deps.sh files/usr/sbin/openuf-deps
-		chmod 755 files/opt/openuf/hook/*.sh files/opt/openuf/rrb/*.uc 2>/dev/null || true
+	chmod 755 files/opt/openuf/hook/*.sh files/opt/openuf/rrb/*.uc 2>/dev/null || true
 	chmod 755 files/usr/lib/openuf/hook/*.sh files/usr/lib/openuf/rrb/*.uc 2>/dev/null || true
 fi
 chmod 755 files/etc/init.d/* files/etc/uci-defaults/* files/usr/bin/* files/usr/sbin/* 2>/dev/null || true
@@ -98,4 +110,3 @@ for f in "$OUT"/*sysupgrade*.bin; do
 	mv "$f" "$OUT/openwrt-qualcommbe-ipq95xx-$dev-$VERSION-$VARIANT.bin"
 done
 ( cd "$OUT" && sha256sum *.bin *.itb 2>/dev/null > SHA256SUMS-$VERSION-$VARIANT.txt || true )
-ls -l "$OUT"

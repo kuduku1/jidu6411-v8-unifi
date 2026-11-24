@@ -1,10 +1,11 @@
 #!/bin/sh
-# JioRouter AX6000 JIDU6J11 (Stock Router Variant): firstboot provisioning
+# JioRouter AX6000 JIDU6J11 (Stock Router Common): firstboot provisioning
 #  - Standalone Router mode (WAN on eth0/wan with NAT/firewall; LAN on br-lan with DHCP)
 #  - Root admin password set to 'admin'
 #  - Wireless: Country US, 5GHz HE160 (SSID 'ODU', open), 2.4GHz HE20 (SSID 'ODU 2', open)
-#  - Dnsmasq: forwards to local AdGuard Home (127.0.0.1#5335) with fallback to 1.1.1.1, 9.9.9.9, and IPv6 twins
-#  - AdGuard Home: enabled and started
+#  - Tailscale Subnet Router & Exit Node firewall plumbing
+#  - USB Tethering & Multi-WAN failover
+#  - Samba 4 NAS & USB storage auto-mount
 
 . /lib/functions.sh
 
@@ -62,49 +63,12 @@ fi
 
 uci commit wireless
 
-# ── 4. DNS Architecture (dnsmasq -> AdGuard Home on 5335 with fallback) ──
-# Disable strictorder so dnsmasq queries fallback without hanging if AdGuard Home is busy/starting
-uci -q delete dhcp.@dnsmasq[0].strictorder
-uci -q set dhcp.@dnsmasq[0].allservers='0'
-# Rebind protection allows local IP resolution from upstream if needed
-uci -q set dhcp.@dnsmasq[0].rebind_protection='0'
-
-# Clear default server list
-while uci -q delete dhcp.@dnsmasq[0].server; do :; done
-
-# Primary resolver: AdGuard Home (local loopback port 5335)
-uci add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'
-# Fast backup resolvers: Cloudflare, Google, and Quad9
-uci add_list dhcp.@dnsmasq[0].server='1.1.1.1'
-uci add_list dhcp.@dnsmasq[0].server='8.8.8.8'
-uci add_list dhcp.@dnsmasq[0].server='9.9.9.9'
-uci add_list dhcp.@dnsmasq[0].server='2606:4700:4700::1111'
-uci add_list dhcp.@dnsmasq[0].server='2001:4860:4860::8888'
-
-uci commit dhcp
-
-# ── 5. AdGuard Home permissions & service ──
-mkdir -p /etc/adguardhome /var/lib/adguardhome /tmp/adguardhome_ram_data
-if [ -f /etc/adguardhome/adguardhome.yaml ]; then
-	chmod 644 /etc/adguardhome/adguardhome.yaml
-fi
-
-chmod +x /usr/sbin/adguardhome-storage-select 2>/dev/null || true
-chmod +x /etc/hotplug.d/block/50-adguardhome-storage 2>/dev/null || true
-chmod +x /etc/init.d/adguardhome 2>/dev/null || true
-
-# Run dynamic storage selector (ext4 SSD vs RAM tmpfs)
-[ -x /usr/sbin/adguardhome-storage-select ] && /usr/sbin/adguardhome-storage-select
-
-[ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome enable
-[ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale enable
-
-# ── 6. Storage & Mount Points (fstab auto-mount for USB pendrives and SSDs) ──
+# ── 4. Storage & Mount Points (fstab auto-mount for USB pendrives and SSDs) ──
 uci -q set fstab.@global[0].anon_mount='1'
 uci -q set fstab.@global[0].auto_mount='1'
 uci -q commit fstab
 
-# ── 7. USB Tethering & Multi-WAN (Failover Only & Load Balancing) ──
+# ── 5. USB Tethering & Multi-WAN (Failover Only & Load Balancing) ──
 # Explicit metrics for mwan3 tracking
 uci -q set network.wan.metric='10'
 
@@ -126,19 +90,19 @@ chmod +x /etc/hotplug.d/net/40-usb-tether 2>/dev/null || true
 
 [ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 enable
 
-# ── 8. Network LED Watchdog ──
+# ── 6. Network LED Watchdog ──
 chmod +x /usr/sbin/network-led-watchdog 2>/dev/null || true
 chmod +x /etc/init.d/network-led-watchdog 2>/dev/null || true
 chmod +x /etc/hotplug.d/iface/99-network-led 2>/dev/null || true
 
 [ -x /etc/init.d/network-led-watchdog ] && /etc/init.d/network-led-watchdog enable
 
-# ── 9. Hardware & Software Flow Offloading (Full Line-Rate Throughput) ──
+# ── 7. Hardware & Software Flow Offloading (Full Line-Rate Throughput) ──
 uci -q set firewall.@defaults[0].flow_offloading='1'
 uci -q set firewall.@defaults[0].flow_offloading_hw='1'
 uci -q commit firewall
 
-# ── 10. Tailscale Subnet Router & Exit Node Pre-Plumbing ──
+# ── 8. Tailscale Subnet Router & Exit Node Pre-Plumbing ──
 uci -q set network.tailscale=interface
 uci -q set network.tailscale.proto='none'
 uci -q set network.tailscale.device='tailscale0'
@@ -169,15 +133,17 @@ uci -q set firewall.@forwarding[-1].src='tailscale'
 uci -q set firewall.@forwarding[-1].dest='wan'
 uci -q commit firewall
 
-# ── 11. Samba 4 (NAS File Sharing for USB Storage) ──
+# ── 9. Samba 4 (NAS File Sharing for USB Storage) ──
 [ -x /etc/init.d/samba4 ] && /etc/init.d/samba4 enable
 
-# ── 12. uHTTPd Anti-Hang Fix (Zero Keepalive Stalls for Instant LuCI Loading) ──
+# ── 10. uHTTPd Anti-Hang Fix (Zero Keepalive Stalls for Instant LuCI Loading) ──
 uci -q set uhttpd.main.http_keepalive='0'
 uci -q commit uhttpd
 
-# ── 13. Tailscale Firewall Mode (nftables compatibility) ──
+# ── 11. Tailscale Firewall Mode (nftables compatibility) ──
 uci -q set tailscale.settings.fw_mode='nftables'
 uci -q commit tailscale
+
+[ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale enable
 
 exit 0

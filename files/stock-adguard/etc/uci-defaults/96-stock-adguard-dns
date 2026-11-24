@@ -1,0 +1,43 @@
+#!/bin/sh
+# JioRouter AX6000 JIDU6J11 (Stock AdGuard Variant): DNS & AdGuard Home setup
+# - dnsmasq forwards to local AdGuard Home (127.0.0.1#5335) with upstream fallback
+# - Run dynamic storage selector (ext4 SSD vs RAM tmpfs)
+# - Enable AdGuard Home service
+
+. /lib/functions.sh
+
+# ── DNS Architecture (dnsmasq -> AdGuard Home on 5335 with fallback) ──
+uci -q delete dhcp.@dnsmasq[0].strictorder
+uci -q set dhcp.@dnsmasq[0].allservers='0'
+uci -q set dhcp.@dnsmasq[0].rebind_protection='0'
+
+# Clear default server list
+while uci -q delete dhcp.@dnsmasq[0].server; do :; done
+
+# Primary resolver: AdGuard Home (local loopback port 5335)
+uci add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'
+# Fast backup resolvers: Cloudflare, Google, and Quad9
+uci add_list dhcp.@dnsmasq[0].server='1.1.1.1'
+uci add_list dhcp.@dnsmasq[0].server='8.8.8.8'
+uci add_list dhcp.@dnsmasq[0].server='9.9.9.9'
+uci add_list dhcp.@dnsmasq[0].server='2606:4700:4700::1111'
+uci add_list dhcp.@dnsmasq[0].server='2001:4860:4860::8888'
+
+uci commit dhcp
+
+# ── AdGuard Home permissions & dynamic storage selector ──
+mkdir -p /etc/adguardhome /var/lib/adguardhome /tmp/adguardhome_ram_data
+if [ -f /etc/adguardhome/adguardhome.yaml ]; then
+	chmod 644 /etc/adguardhome/adguardhome.yaml
+fi
+
+chmod +x /usr/sbin/adguardhome-storage-select 2>/dev/null || true
+chmod +x /etc/hotplug.d/block/50-adguardhome-storage 2>/dev/null || true
+chmod +x /etc/init.d/adguardhome 2>/dev/null || true
+
+# Run dynamic storage selector (ext4 SSD vs RAM tmpfs)
+[ -x /usr/sbin/adguardhome-storage-select ] && /usr/sbin/adguardhome-storage-select
+
+[ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome enable
+
+exit 0
