@@ -1,0 +1,98 @@
+﻿#!/bin/sh
+# JioRouter AX6000 JIDU6J11 (Stock Router Variant): firstboot provisioning
+#  - Standalone Router mode (WAN on eth0/wan with NAT/firewall; LAN on br-lan with DHCP)
+#  - Root admin password set to 'admin'
+#  - Wireless: Country US, 5GHz HE160 (SSID 'ODU', open), 2.4GHz HE20 (SSID 'ODU 2', open)
+#  - Dnsmasq: forwards to local AdGuard Home (127.0.0.1#5335) with fallback to 1.1.1.1, 9.9.9.9, and IPv6 twins
+#  - AdGuard Home: enabled and started
+
+. /lib/functions.sh
+
+# ── 1. Root password: 'admin' ──
+echo -e "admin\nadmin" | passwd root 2>/dev/null || true
+if command -v openssl >/dev/null 2>&1; then
+	H=$(openssl passwd -6 admin 2>/dev/null)
+	[ -n "$H" ] && sed -i "s|^root:[^:]*:|root:$H:|" /etc/shadow
+fi
+
+# ── 2. Timezone: Asia/Kolkata ──
+uci -q set system.@system[0].zonename='Asia/Kolkata'
+uci -q set system.@system[0].timezone='IST-5:30'
+uci -q commit system
+
+# ── 3. Wireless configuration ──
+# 5 GHz: ODU (open, HE160)
+# 2.4 GHz: ODU 2 (open, HE20)
+for r in $(uci -q show wireless | sed -n "s/^wireless\.\([^.=]*\)=wifi-device$/\1/p"); do
+	uci -q delete "wireless.$r.disabled"
+	uci -q set "wireless.$r.country=US"
+	
+	band=$(uci -q get "wireless.$r.band")
+	htmode=$(uci -q get "wireless.$r.htmode")
+	
+	if [ "$band" = "5g" ] || [ "$band" = "6g" ] || echo "$htmode" | grep -qi "vht\|he80\|he160"; then
+		uci -q set "wireless.$r.htmode=HE160"
+		DEV_5G="$r"
+	else
+		uci -q set "wireless.$r.htmode=HE20"
+		DEV_2G="$r"
+	fi
+done
+
+# Clear existing default wifi-iface sections and configure explicit SSIDs
+while uci -q delete wireless.@wifi-iface[0]; do :; done
+
+if [ -n "$DEV_5G" ]; then
+	uci add wireless wifi-iface >/dev/null
+	uci set wireless.@wifi-iface[-1].device="$DEV_5G"
+	uci set wireless.@wifi-iface[-1].network='lan'
+	uci set wireless.@wifi-iface[-1].mode='ap'
+	uci set wireless.@wifi-iface[-1].ssid='ODU'
+	uci set wireless.@wifi-iface[-1].encryption='none'
+fi
+
+if [ -n "$DEV_2G" ]; then
+	uci add wireless wifi-iface >/dev/null
+	uci set wireless.@wifi-iface[-1].device="$DEV_2G"
+	uci set wireless.@wifi-iface[-1].network='lan'
+	uci set wireless.@wifi-iface[-1].mode='ap'
+	uci set wireless.@wifi-iface[-1].ssid='ODU 2'
+	uci set wireless.@wifi-iface[-1].encryption='none'
+fi
+
+uci commit wireless
+
+# ── 4. DNS Architecture (dnsmasq -> AdGuard Home on 5335 with fallback) ──
+# Disable resolvd file fetching from ISP WAN so dnsmasq exclusively uses AdGuard + fallback
+uci -q set dhcp.@dnsmasq[0].noresolv='1'
+# Query servers in order (AdGuard first, then fallback)
+uci -q set dhcp.@dnsmasq[0].strictorder='1'
+# Rebind protection allows local IP resolution from upstream if needed
+uci -q set dhcp.@dnsmasq[0].rebind_protection='0'
+
+# Clear default server list
+while uci -q delete dhcp.@dnsmasq[0].server; do :; done
+
+# Primary resolver: AdGuard Home (local loopback port 5335)
+uci add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'
+# Backup resolvers: Cloudflare and Quad9 IPv4 & IPv6
+uci add_list dhcp.@dnsmasq[0].server='1.1.1.1'
+uci add_list dhcp.@dnsmasq[0].server='9.9.9.9'
+uci add_list dhcp.@dnsmasq[0].server='2606:4700:4700::1111'
+uci add_list dhcp.@dnsmasq[0].server='2620:fe::fe'
+
+uci commit dhcp
+
+# ── 5. AdGuard Home permissions & service ──
+if [ -f /etc/adguardhome/adguardhome.yaml ]; then
+	chmod 600 /etc/adguardhome/adguardhome.yaml
+	# Ensure adguardhome user owns the config if user exists
+	if id -u adguardhome >/dev/null 2>&1; then
+		chown -R adguardhome:adguardhome /etc/adguardhome
+	fi
+fi
+
+[ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome enable
+[ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale enable
+
+exit 0

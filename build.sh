@@ -37,6 +37,10 @@ need 'CONFIG_PACKAGE_kmod-sched-act-police=y'
 need 'CONFIG_PACKAGE_luci-ssl=y'
 need 'CONFIG_PACKAGE_wpad-mbedtls=y'
 need 'CONFIG_PACKAGE_tailscale=y'
+if [ "$VARIANT" = stock ]; then
+	need 'CONFIG_PACKAGE_adguardhome=y'
+	need 'CONFIG_PACKAGE_luci-app-adguardhome=y'
+fi
 if [ "$VARIANT" = unifi ]; then
 	for p in lua lua-cjson luasocket lua-openssl luabitop libuci-lua tc-tiny; do need "CONFIG_PACKAGE_$p=y"; done
 fi
@@ -54,7 +58,8 @@ if [ "$VARIANT" = unifi ]; then
 	ln -sf /opt/openuf/hook/openuf-cli.sh files/usr/bin/openuf
 	ln -sf /opt/openuf/hook/openuf-convert.sh files/usr/sbin/openuf-convert
 	ln -sf /opt/openuf/hook/openuf-deps.sh files/usr/sbin/openuf-deps
-	chmod 755 files/opt/openuf/hook/*.sh files/opt/openuf/rrb/*.uc 2>/dev/null || true`n`tchmod 755 files/usr/lib/openuf/hook/*.sh files/usr/lib/openuf/rrb/*.uc 2>/dev/null || true
+		chmod 755 files/opt/openuf/hook/*.sh files/opt/openuf/rrb/*.uc 2>/dev/null || true
+	chmod 755 files/usr/lib/openuf/hook/*.sh files/usr/lib/openuf/rrb/*.uc 2>/dev/null || true
 fi
 chmod 755 files/etc/init.d/* files/etc/uci-defaults/* files/usr/bin/* files/usr/sbin/* 2>/dev/null || true
 

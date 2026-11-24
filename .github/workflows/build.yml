@@ -11,7 +11,7 @@ on:
         description: Which image(s) to build
         type: choice
         options: [unifi, both, stock]
-        default: unifi
+        default: stock
 
 jobs:
   build:
