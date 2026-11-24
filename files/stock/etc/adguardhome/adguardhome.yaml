@@ -86,6 +86,38 @@ filters:
     url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_2.txt
     name: AdAway Default Blocklist
     id: 2
+  - enabled: true
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/pro.txt
+    name: HaGeZi Multi PRO
+    id: 3
+  - enabled: true
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/tif.mini.txt
+    name: HaGeZi Threat Intelligence Feeds (TIF) Mini
+    id: 4
+  - enabled: true
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/gambling.mini.txt
+    name: HaGeZi Gambling Mini
+    id: 5
+  - enabled: true
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.tiktok.txt
+    name: HaGeZi Native Tracker: TikTok
+    id: 6
+  - enabled: true
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.huawei.txt
+    name: HaGeZi Native Tracker: Huawei
+    id: 7
+  - enabled: true
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.roku.txt
+    name: HaGeZi Native Tracker: Roku
+    id: 8
+  - enabled: true
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.vivo.txt
+    name: HaGeZi Native Tracker: Vivo
+    id: 9
+  - enabled: true
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.xiaomi.txt
+    name: HaGeZi Native Tracker: Xiaomi
+    id: 10
 whitelist_filters: []
 user_rules:
   - "@@||tampermonkey.net^$important"
