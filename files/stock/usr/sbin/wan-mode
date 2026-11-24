@@ -1,0 +1,52 @@
+#!/bin/sh
+# wan-mode: Select WAN Mode between "Failover Only" and "Load Balancing" (Use Both)
+#  - Usage:
+#      wan-mode failover   -> Primary WAN1, Tether as backup (with ISP watchdog)
+#      wan-mode balance    -> Use both connections simultaneously
+#      wan-mode status     -> Show current mode and link status
+
+case "$1" in
+	failover|failover-only)
+		uci set mwan3.default_rule_v4.use_policy='failover'
+		uci commit mwan3
+		mwan3 restart >/dev/null 2>&1
+		echo "=========================================================="
+		echo " WAN Mode: [Failover Only]"
+		echo " - WAN1 (Ethernet): Primary connection"
+		echo " - Tether (USB):    Backup (active when WAN1 ISP is dead)"
+		echo "=========================================================="
+		;;
+	balance|load-balancing|both)
+		uci set mwan3.default_rule_v4.use_policy='balanced'
+		uci commit mwan3
+		mwan3 restart >/dev/null 2>&1
+		echo "=========================================================="
+		echo " WAN Mode: [Load Balancing (Use Both)]"
+		echo " - Distributing network traffic across both connections"
+		echo " - WAN1 (Ethernet) + USB Tether active simultaneously"
+		echo "=========================================================="
+		;;
+	status|"")
+		CURRENT=$(uci -q get mwan3.default_rule_v4.use_policy)
+		echo "=========================================================="
+		echo " Current WAN Mode: [ $CURRENT ]"
+		if [ "$CURRENT" = "balanced" ]; then
+			echo " Active Policy: Load Balancing (Using both connections)"
+		else
+			echo " Active Policy: Failover Only (WAN1 Primary, Tether Backup)"
+		fi
+		echo "----------------------------------------------------------"
+		if command -v mwan3 >/dev/null 2>&1; then
+			mwan3 status | grep -E "interface (wan|tether) is"
+		fi
+		echo "=========================================================="
+		echo " Usage to switch:"
+		echo "   wan-mode failover   (Failover Only)"
+		echo "   wan-mode balance    (Load Balancing / Use Both)"
+		echo "=========================================================="
+		;;
+	*)
+		echo "Usage: $0 {failover|balance|status}"
+		exit 1
+		;;
+esac

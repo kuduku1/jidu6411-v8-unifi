@@ -1,0 +1,25 @@
+#!/bin/sh
+# Hotplug net script:
+# Automatically brings up Android / iPhone USB Tethering interface when phone is connected
+
+case "$ACTION" in
+	add)
+		case "$INTERFACE" in
+			usb*|rndis*)
+				logger -t usb-tether "USB Tethering device $INTERFACE detected. Configuring network..."
+				uci -q set network.tether.device="$INTERFACE"
+				uci -q commit network
+				ifup tether
+				logger -t usb-tether "Interface 'tether' brought up on device $INTERFACE."
+				;;
+		esac
+		;;
+	remove)
+		case "$INTERFACE" in
+			usb*|rndis*)
+				logger -t usb-tether "USB Tethering device $INTERFACE disconnected."
+				ifdown tether
+				;;
+		esac
+		;;
+esac

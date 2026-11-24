@@ -44,6 +44,9 @@ if [ "$VARIANT" = stock ]; then
 	need 'CONFIG_PACKAGE_kmod-fs-ext4=y'
 	need 'CONFIG_PACKAGE_block-mount=y'
 	need 'CONFIG_PACKAGE_e2fsprogs=y'
+	need 'CONFIG_PACKAGE_kmod-usb-net-rndis=y'
+	need 'CONFIG_PACKAGE_mwan3=y'
+	need 'CONFIG_PACKAGE_luci-app-mwan3=y'
 fi
 if [ "$VARIANT" = unifi ]; then
 	for p in lua lua-cjson luasocket lua-openssl luabitop libuci-lua tc-tiny; do need "CONFIG_PACKAGE_$p=y"; done
@@ -58,6 +61,7 @@ find files -name .keep -delete
 chmod +x files/etc/uci-defaults/* 2>/dev/null || true
 chmod +x files/usr/sbin/* 2>/dev/null || true
 chmod +x files/etc/hotplug.d/block/* 2>/dev/null || true
+chmod +x files/etc/hotplug.d/net/* 2>/dev/null || true
 chmod +x files/etc/init.d/* 2>/dev/null || true
 
 if [ "$VARIANT" = unifi ]; then

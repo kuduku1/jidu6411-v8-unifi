@@ -105,4 +105,26 @@ uci -q set fstab.@global[0].anon_mount='1'
 uci -q set fstab.@global[0].auto_mount='1'
 uci -q commit fstab
 
+# ── 7. USB Tethering & Multi-WAN (Failover Only & Load Balancing) ──
+# Explicit metrics for mwan3 tracking
+uci -q set network.wan.metric='10'
+
+# Auto-configured Tether interface (usb0 / rndis)
+uci -q set network.tether=interface
+uci -q set network.tether.proto='dhcp'
+uci -q set network.tether.device='usb0'
+uci -q set network.tether.metric='20'
+uci -q commit network
+
+# Attach tether interface to WAN firewall zone
+for z in $(uci -q show firewall | sed -n "s/^firewall\.@zone\[\([0-9]*\)\].name='wan'/\1/p"); do
+	uci -q add_list "firewall.@zone[$z].network=tether"
+done
+uci -q commit firewall
+
+chmod +x /usr/sbin/wan-mode 2>/dev/null || true
+chmod +x /etc/hotplug.d/net/40-usb-tether 2>/dev/null || true
+
+[ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 enable
+
 exit 0
