@@ -1,4 +1,4 @@
-﻿#!/bin/sh
+#!/bin/sh
 # JioRouter AX6000 JIDU6J11 (Stock Router Variant): firstboot provisioning
 #  - Standalone Router mode (WAN on eth0/wan with NAT/firewall; LAN on br-lan with DHCP)
 #  - Root admin password set to 'admin'

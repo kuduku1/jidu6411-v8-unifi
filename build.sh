@@ -26,7 +26,8 @@ grep -h '^LINUX_VERSION-6.18' target/linux/generic/kernel-6.18
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 
-cat "$HERE/configs/common.config" "$HERE/configs/$VARIANT.config" > .config
+# Strip any UTF-8 BOM and Windows CRLF to prevent Makefile "missing separator" errors
+cat "$HERE/configs/common.config" "$HERE/configs/$VARIANT.config" | sed -e 's/^\xef\xbb\xbf//' | tr -d '\r' > .config
 make defconfig
 
 # Fail loudly if anything we rely on was dropped by defconfig.
@@ -62,6 +63,7 @@ rm -rf files; mkdir -p files
 cp -a "$HERE/files/common/." files/
 cp -a "$HERE/files/$VARIANT/." files/
 find files -name .keep -delete
+find files -type f -exec sed -i -e 's/^\xef\xbb\xbf//' -e 's/\r$//' {} + 2>/dev/null || true
 chmod +x files/etc/uci-defaults/* 2>/dev/null || true
 chmod +x files/usr/sbin/* 2>/dev/null || true
 chmod +x files/etc/hotplug.d/*/* 2>/dev/null || true
