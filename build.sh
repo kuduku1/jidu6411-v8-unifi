@@ -42,8 +42,6 @@ need 'CONFIG_PACKAGE_kmod-nft-bridge=y'
 need 'CONFIG_PACKAGE_kmod-sched-act-police=y'
 need 'CONFIG_PACKAGE_luci-ssl=y'
 need 'CONFIG_PACKAGE_wpad-mbedtls=y'
-need 'CONFIG_PACKAGE_tailscale=y'
-need 'CONFIG_PACKAGE_iptables-nft=y'
 if [ "$VARIANT" = "stock-fast" ] || [ "$VARIANT" = "stock-adguard" ]; then
 	[ "$VARIANT" = "stock-adguard" ] && need 'CONFIG_PACKAGE_adguardhome=y'
 	[ "$VARIANT" = "stock-fast" ] && need 'CONFIG_PACKAGE_adblock-fast=y'
@@ -61,6 +59,7 @@ if [ "$VARIANT" = "stock-fast" ] || [ "$VARIANT" = "stock-adguard" ]; then
 	need 'CONFIG_PACKAGE_kmod-nft-offload=y'
 fi
 if [ "$VARIANT" = unifi ]; then
+	need 'CONFIG_PACKAGE_tailscale=y'
 	for p in lua lua-cjson luasocket lua-openssl luabitop libuci-lua tc-tiny; do need "CONFIG_PACKAGE_$p=y"; done
 fi
 [ "${CHECK_ONLY:-0}" = 1 ] && { echo "==> CHECK_ONLY: defconfig OK"; exit 0; }
