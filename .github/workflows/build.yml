@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: ${{ fromJSON(inputs.variant == 'both' && '["unifi","stock"]' || format('["{0}"]', inputs.variant || 'unifi')) }}
+        variant: ${{ fromJSON(inputs.variant == 'both' && '["unifi","stock"]' || inputs.variant == 'unifi' && '["unifi"]' || '["stock"]') }}
     steps:
       - uses: actions/checkout@v5
 
@@ -43,7 +43,7 @@ jobs:
       - name: Build (${{ matrix.variant }})
         env:
           VARIANT: ${{ matrix.variant }}
-          VERSION: ${{ inputs.version || 'v1.0.0' }}
+          VERSION: ${{ inputs.version || 'v1.0.1' }}
         run: bash ./build.sh
 
       - name: Upload firmware
