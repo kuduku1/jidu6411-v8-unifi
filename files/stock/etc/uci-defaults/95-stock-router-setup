@@ -87,7 +87,6 @@ uci commit dhcp
 mkdir -p /etc/adguardhome /var/lib/adguardhome /tmp/adguardhome_ram_data
 if [ -f /etc/adguardhome/adguardhome.yaml ]; then
 	chmod 644 /etc/adguardhome/adguardhome.yaml
-	ln -sf /etc/adguardhome/adguardhome.yaml /etc/adguardhome.yaml
 fi
 
 chmod +x /usr/sbin/adguardhome-storage-select 2>/dev/null || true

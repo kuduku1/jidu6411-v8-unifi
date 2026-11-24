@@ -9,10 +9,15 @@ PROG=/usr/bin/AdGuardHome
 start_service() {
 	[ -x "$PROG" ] || return 1
 
-	# Ensure configuration exists
-	if [ ! -f /etc/adguardhome/adguardhome.yaml ] && [ -f /etc/adguardhome.yaml ]; then
-		mkdir -p /etc/adguardhome
-		cp -a /etc/adguardhome.yaml /etc/adguardhome/adguardhome.yaml
+	# Ensure configuration directory and clean config exist
+	mkdir -p /etc/adguardhome
+	if [ -L /etc/adguardhome/adguardhome.yaml ]; then
+		rm -f /etc/adguardhome/adguardhome.yaml
+	fi
+	if [ ! -f /etc/adguardhome/adguardhome.yaml ]; then
+		if [ -f /rom/etc/adguardhome/adguardhome.yaml ]; then
+			cp /rom/etc/adguardhome/adguardhome.yaml /etc/adguardhome/adguardhome.yaml
+		fi
 	fi
 
 	# Dynamic storage selection: Ext4 SSD vs RAM tmpfs
