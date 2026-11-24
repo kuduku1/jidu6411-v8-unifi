@@ -59,10 +59,10 @@ dns:
   trusted_proxies:
     - 127.0.0.0/8
     - ::1/128
-  cache_size: 2097152
-  cache_ttl_min: 60
+  cache_size: 16777216
+  cache_ttl_min: 300
   cache_ttl_max: 86400
-  cache_optimistic: false
+  cache_optimistic: true
   bogus_nxdomain: []
   aaaa_disabled: false
   enable_dnssec: false
@@ -78,7 +78,7 @@ dns:
 tls:
   enabled: false
 filters:
-  - enabled: false
+  - enabled: true
     url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt
     name: AdGuard DNS filter
     id: 1
@@ -138,11 +138,11 @@ os:
 querylog:
   enabled: true
   file_enabled: true
-  interval: 24h
+  interval: 7d
   size_memory: 1000
   ignored: []
 statistics:
   enabled: true
-  interval: 24h
+  interval: 7d
   ignored: []
 schema_version: 29
