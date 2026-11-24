@@ -84,11 +84,12 @@ uci add_list dhcp.@dnsmasq[0].server='2620:fe::fe'
 uci commit dhcp
 
 # ── 5. AdGuard Home permissions & service ──
+mkdir -p /etc/adguardhome /var/lib/adguardhome
 if [ -f /etc/adguardhome/adguardhome.yaml ]; then
-	chmod 600 /etc/adguardhome/adguardhome.yaml
-	# Ensure adguardhome user owns the config if user exists
+	chmod 644 /etc/adguardhome/adguardhome.yaml
+	ln -sf /etc/adguardhome/adguardhome.yaml /etc/adguardhome.yaml
 	if id -u adguardhome >/dev/null 2>&1; then
-		chown -R adguardhome:adguardhome /etc/adguardhome
+		chown -R adguardhome:adguardhome /etc/adguardhome /var/lib/adguardhome 2>/dev/null || true
 	fi
 fi
 
