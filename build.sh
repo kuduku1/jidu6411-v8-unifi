@@ -40,6 +40,11 @@ need 'CONFIG_PACKAGE_tailscale=y'
 if [ "$VARIANT" = stock ]; then
 	need 'CONFIG_PACKAGE_adguardhome=y'
 	need 'CONFIG_PACKAGE_luci-app-adguardhome=y'
+	need 'CONFIG_PACKAGE_kmod-usb-storage=y'
+	need 'CONFIG_PACKAGE_kmod-usb-storage-uas=y'
+	need 'CONFIG_PACKAGE_kmod-fs-ext4=y'
+	need 'CONFIG_PACKAGE_block-mount=y'
+	need 'CONFIG_PACKAGE_e2fsprogs=y'
 fi
 if [ "$VARIANT" = unifi ]; then
 	for p in lua lua-cjson luasocket lua-openssl luabitop libuci-lua tc-tiny; do need "CONFIG_PACKAGE_$p=y"; done
@@ -51,6 +56,10 @@ rm -rf files; mkdir -p files
 cp -a "$HERE/files/common/." files/
 cp -a "$HERE/files/$VARIANT/." files/
 find files -name .keep -delete
+chmod +x files/etc/uci-defaults/* 2>/dev/null || true
+chmod +x files/usr/sbin/* 2>/dev/null || true
+chmod +x files/etc/hotplug.d/block/* 2>/dev/null || true
+chmod +x files/etc/init.d/* 2>/dev/null || true
 
 if [ "$VARIANT" = unifi ]; then
 	mkdir -p files/usr/bin files/usr/sbin

@@ -1,0 +1,15 @@
+#!/bin/sh
+# Hotplug block script:
+# Seamlessly pivots AdGuard Home data between Ext4 SSD and RAM tmpfs on disk plug/unplug
+
+case "$ACTION" in
+	mount|umount)
+		if [ -x /usr/sbin/adguardhome-storage-select ]; then
+			/usr/sbin/adguardhome-storage-select
+			if [ $? -eq 1 ] && [ -x /etc/init.d/adguardhome ]; then
+				logger -t adguardhome-hotplug "Storage configuration changed. Restarting AdGuard Home..."
+				/etc/init.d/adguardhome restart
+			fi
+		fi
+		;;
+esac

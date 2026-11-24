@@ -84,16 +84,25 @@ uci add_list dhcp.@dnsmasq[0].server='2620:fe::fe'
 uci commit dhcp
 
 # ── 5. AdGuard Home permissions & service ──
-mkdir -p /etc/adguardhome /var/lib/adguardhome
+mkdir -p /etc/adguardhome /var/lib/adguardhome /tmp/adguardhome_ram_data
 if [ -f /etc/adguardhome/adguardhome.yaml ]; then
 	chmod 644 /etc/adguardhome/adguardhome.yaml
 	ln -sf /etc/adguardhome/adguardhome.yaml /etc/adguardhome.yaml
-	if id -u adguardhome >/dev/null 2>&1; then
-		chown -R adguardhome:adguardhome /etc/adguardhome /var/lib/adguardhome 2>/dev/null || true
-	fi
 fi
+
+chmod +x /usr/sbin/adguardhome-storage-select 2>/dev/null || true
+chmod +x /etc/hotplug.d/block/50-adguardhome-storage 2>/dev/null || true
+chmod +x /etc/init.d/adguardhome 2>/dev/null || true
+
+# Run dynamic storage selector (ext4 SSD vs RAM tmpfs)
+[ -x /usr/sbin/adguardhome-storage-select ] && /usr/sbin/adguardhome-storage-select
 
 [ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome enable
 [ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale enable
+
+# ── 6. Storage & Mount Points (fstab auto-mount for USB pendrives and SSDs) ──
+uci -q set fstab.@global[0].anon_mount='1'
+uci -q set fstab.@global[0].auto_mount='1'
+uci -q commit fstab
 
 exit 0

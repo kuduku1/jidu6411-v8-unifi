@@ -1,0 +1,77 @@
+#!/bin/sh
+# adguardhome-storage-select:
+# Manages AdGuard Home data location (lists, stats, querylog):
+#  - If an ext4 USB SSD/pendrive is mounted: routes data to <ext4_mount>/adguardhome/data
+#  - If no ext4 drive is found (drive missing, or formatted FAT/exFAT/NTFS):
+#    keeps data safely in RAM (/tmp/adguardhome_ram_data) so ad-blocking keeps working
+#    and non-ext4 drives remain untouched for file storage.
+
+WORK_DIR="/var/lib/adguardhome"
+RAM_DATA_DIR="/tmp/adguardhome_ram_data"
+
+mkdir -p "$WORK_DIR" "$RAM_DATA_DIR"
+
+# Search /proc/mounts for any mounted filesystem formatted as ext4
+# Exclude rootfs (/), /overlay, and /rom
+EXT4_TARGET=""
+for m in $(awk '$3 == "ext4" && $2 != "/" && $2 !~ /^\/overlay/ && $2 !~ /^\/rom/ { print $2 }' /proc/mounts); do
+	# Check write capability
+	if touch "$m/.agh_probe" 2>/dev/null; then
+		rm -f "$m/.agh_probe"
+		EXT4_TARGET="$m"
+		break
+	fi
+done
+
+STATUS_CHANGED=0
+
+if [ -n "$EXT4_TARGET" ]; then
+	SSD_DATA_DIR="$EXT4_TARGET/adguardhome/data"
+	mkdir -p "$SSD_DATA_DIR"
+
+	chmod 755 "$EXT4_TARGET/adguardhome" 2>/dev/null || true
+	chmod 700 "$SSD_DATA_DIR" 2>/dev/null || true
+	if id -u adguardhome >/dev/null 2>&1; then
+		chown -R adguardhome:adguardhome "$EXT4_TARGET/adguardhome" 2>/dev/null || true
+	fi
+
+	CURRENT_TARGET=$(readlink "$WORK_DIR/data" 2>/dev/null || echo "")
+	if [ "$CURRENT_TARGET" != "$SSD_DATA_DIR" ]; then
+		# Migrate initial filters/lists from RAM if SSD directory is fresh
+		if [ -d "$WORK_DIR/data" ] && [ ! -L "$WORK_DIR/data" ]; then
+			cp -rn "$WORK_DIR/data"/* "$SSD_DATA_DIR/" 2>/dev/null || true
+			rm -rf "$WORK_DIR/data"
+		elif [ -L "$WORK_DIR/data" ]; then
+			rm -f "$WORK_DIR/data"
+		fi
+
+		ln -sfn "$SSD_DATA_DIR" "$WORK_DIR/data"
+		STATUS_CHANGED=1
+		logger -t adguardhome-storage "Ext4 SSD detected at $EXT4_TARGET: AdGuard Home lists, stats, and query log located on SSD ($SSD_DATA_DIR)."
+	fi
+else
+	# No ext4 mount found (missing or formatted FAT/exFAT/NTFS)
+	chmod 700 "$RAM_DATA_DIR" 2>/dev/null || true
+	if id -u adguardhome >/dev/null 2>&1; then
+		chown -R adguardhome:adguardhome "$RAM_DATA_DIR" 2>/dev/null || true
+	fi
+
+	CURRENT_TARGET=$(readlink "$WORK_DIR/data" 2>/dev/null || echo "")
+	if [ "$CURRENT_TARGET" != "$RAM_DATA_DIR" ]; then
+		if [ -L "$WORK_DIR/data" ]; then
+			rm -f "$WORK_DIR/data"
+		fi
+		if [ ! -d "$WORK_DIR/data" ]; then
+			ln -sfn "$RAM_DATA_DIR" "$WORK_DIR/data"
+		fi
+		STATUS_CHANGED=1
+		logger -t adguardhome-storage "No ext4 storage detected: AdGuard Home running safely in RAM ($RAM_DATA_DIR). Non-ext4 USB storage reserved for file storage."
+	fi
+fi
+
+# Ensure adguardhome user owns /var/lib/adguardhome
+if id -u adguardhome >/dev/null 2>&1; then
+	chown -R adguardhome:adguardhome "$WORK_DIR" 2>/dev/null || true
+fi
+
+exit $STATUS_CHANGED
