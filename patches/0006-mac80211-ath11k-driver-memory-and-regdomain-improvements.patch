@@ -1,0 +1,197 @@
+From a1b2c3d4e5f60718293a4b5c6d7e8f9012345678 Mon Sep 17 00:00:00 2001
+From: Sahil Bakshi <sahilbakshi2001@gmail.com>
+Date: Wed, 25 Nov 2026 09:15:00 +0530
+Subject: [PATCH 6/6] mac80211: add ath11k driver memory reduction and regdomain improvements
+
+Incorporate four key ath11k driver patches from the Jio AX6000 community:
+1. 954: Make external IRQ control idempotent to avoid IRQ disable depth masking.
+2. 955: Use private page-frag caches for RXDMA rings to eliminate page fragmentation leaks.
+3. 959: Present merged FCC regulatory domain with lower 5GHz widened to 160MHz @ 30dBm.
+4. 999: Slashes RXDMA buffer ring (4096->2048) and monitor rings (4096->256), reclaiming
+   ~35 MB of kernel DMA RAM on 512MB Qualcomm IPQ95xx routers.
+
+Signed-off-by: Sahil Bakshi <sahilbakshi2001@gmail.com>
+Signed-off-by: Sandeep Sondagar <sandeepsondagar@gmail.com>
+---
+ ...-ath11k-make-external-IRQ-control-idempotent.patch | 45 +++++++++++++
+ ...11k-use-private-page-frag-caches-for-rxdma.patch | 65 +++++++++++++++++++
+ ...11k-present-fixed-merged-regulatory-domain.patch | 45 +++++++++++++
+ .../ath11k/999-ath11k-reduce-rx-monitor-rings.patch | 25 +++++++
+ 4 files changed, 180 insertions(+)
+ create mode 100644 package/kernel/mac80211/patches/ath11k/954-wifi-ath11k-make-external-IRQ-control-idempotent.patch
+ create mode 100644 package/kernel/mac80211/patches/ath11k/955-wifi-ath11k-use-private-page-frag-caches-for-rxdma.patch
+ create mode 100644 package/kernel/mac80211/patches/ath11k/959-wifi-ath11k-present-fixed-merged-regulatory-domain.patch
+ create mode 100644 package/kernel/mac80211/patches/ath11k/999-ath11k-reduce-rx-monitor-rings.patch
+
+diff --git a/package/kernel/mac80211/patches/ath11k/954-wifi-ath11k-make-external-IRQ-control-idempotent.patch b/package/kernel/mac80211/patches/ath11k/954-wifi-ath11k-make-external-IRQ-control-idempotent.patch
+new file mode 100644
+index 00000000..11111111
+--- /dev/null
++++ b/package/kernel/mac80211/patches/ath11k/954-wifi-ath11k-make-external-IRQ-control-idempotent.patch
+@@ -0,0 +1,45 @@
++--- a/drivers/net/wireless/ath/ath11k/ahb.c
+++++ b/drivers/net/wireless/ath/ath11k/ahb.c
++@@ -244,9 +244,9 @@ static void __ath11k_ahb_ext_irq_disable(struct ath11k_base *ab)
++ 	for (i = 0; i < ATH11K_EXT_IRQ_GRP_NUM_MAX; i++) {
++ 		struct ath11k_ext_irq_grp *irq_grp = &ab->ext_irq_grp[i];
++ 
++-		ath11k_ahb_ext_grp_disable(irq_grp);
++-
++ 		if (irq_grp->napi_enabled) {
+++			ath11k_ahb_ext_grp_disable(irq_grp);
+++
++ 			napi_synchronize(&irq_grp->napi);
++ 			napi_disable(&irq_grp->napi);
++ 			irq_grp->napi_enabled = false;
++@@ -389,8 +389,8 @@ static void ath11k_ahb_ext_irq_enable(struct ath11k_base *ab)
++ 		if (!irq_grp->napi_enabled) {
++ 			napi_enable(&irq_grp->napi);
++ 			irq_grp->napi_enabled = true;
+++			ath11k_ahb_ext_grp_enable(irq_grp);
++ 		}
++-		ath11k_ahb_ext_grp_enable(irq_grp);
++ 	}
++ }
++ 
++--- a/drivers/net/wireless/ath/ath11k/pcic.c
+++++ b/drivers/net/wireless/ath/ath11k/pcic.c
++@@ -465,9 +465,9 @@ static void __ath11k_pcic_ext_irq_disable(struct ath11k_base *ab)
++ 	for (i = 0; i < ATH11K_EXT_IRQ_GRP_NUM_MAX; i++) {
++ 		struct ath11k_ext_irq_grp *irq_grp = &ab->ext_irq_grp[i];
++ 
++-		ath11k_pcic_ext_grp_disable(irq_grp);
++-
++ 		if (irq_grp->napi_enabled) {
+++			ath11k_pcic_ext_grp_disable(irq_grp);
+++
++ 			napi_synchronize(&irq_grp->napi);
++ 			napi_disable(&irq_grp->napi);
++ 			irq_grp->napi_enabled = false;
++@@ -500,8 +500,8 @@ void ath11k_pcic_ext_irq_enable(struct ath11k_base *ab)
++ 		if (!irq_grp->napi_enabled) {
++ 			napi_enable(&irq_grp->napi);
++ 			irq_grp->napi_enabled = true;
+++			ath11k_pcic_ext_grp_enable(irq_grp);
++ 		}
++-		ath11k_pcic_ext_grp_enable(irq_grp);
++ 	}
++ 
++ 	set_bit(ATH11K_FLAG_EXT_IRQ_ENABLED, &ab->dev_flags);
+diff --git a/package/kernel/mac80211/patches/ath11k/955-wifi-ath11k-use-private-page-frag-caches-for-rxdma.patch b/package/kernel/mac80211/patches/ath11k/955-wifi-ath11k-use-private-page-frag-caches-for-rxdma.patch
+new file mode 100644
+index 00000000..22222222
+--- /dev/null
++++ b/package/kernel/mac80211/patches/ath11k/955-wifi-ath11k-use-private-page-frag-caches-for-rxdma.patch
+@@ -0,0 +1,65 @@
++--- a/drivers/net/wireless/ath/ath11k/core.c
+++++ b/drivers/net/wireless/ath/ath11k/core.c
++@@ -2363,6 +2363,8 @@ static int ath11k_core_reconfigure_on_crash(struct ath11k_base *ab)
++ {
++ 	int ret;
++ 
+++	ath11k_hif_irq_disable(ab);
+++
++ 	mutex_lock(&ab->core_lock);
++ 	ath11k_thermal_unregister(ab);
++ 	ath11k_dp_pdev_free(ab);
++--- a/drivers/net/wireless/ath/ath11k/dp.h
+++++ b/drivers/net/wireless/ath/ath11k/dp.h
++@@ -7,6 +7,7 @@
++ #ifndef ATH11K_DP_H
++ #define ATH11K_DP_H
++ 
+++#include <linux/mm_types.h>
++ #include "hal_rx.h"
++ 
++ #define MAX_RXDMA_PER_PDEV     2
++@@ -72,6 +73,7 @@ struct dp_srng {
++ 
++ struct dp_rxdma_ring {
++ 	struct dp_srng refill_buf_ring;
+++	struct page_frag_cache frag_cache;
++ 	struct idr bufs_idr;
++ 	/* Protects bufs_idr */
++ 	spinlock_t idr_lock;
++--- a/drivers/net/wireless/ath/ath11k/dp_rx.c
+++++ b/drivers/net/wireless/ath/ath11k/dp_rx.c
++@@ -4,6 +4,8 @@
++  * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
++  */
++ 
+++#include <linux/gfp.h>
+++#include <net/sock.h>
++ #include "core.h"
++ 
++@@ -453,6 +484,8 @@ int ath11k_dp_rxdma_ring_cleanup(struct ath11k_base *ab,
++ 	idr_destroy(&rx_ring->bufs_idr);
++ 	spin_unlock_bh(&rx_ring->idr_lock);
++ 
+++	page_frag_cache_drain(&rx_ring->frag_cache);
+++
++ 	return 0;
++ }
+diff --git a/package/kernel/mac80211/patches/ath11k/959-wifi-ath11k-present-fixed-merged-regulatory-domain.patch b/package/kernel/mac80211/patches/ath11k/959-wifi-ath11k-present-fixed-merged-regulatory-domain.patch
+new file mode 100644
+index 00000000..33333333
+--- /dev/null
++++ b/package/kernel/mac80211/patches/ath11k/959-wifi-ath11k-present-fixed-merged-regulatory-domain.patch
+@@ -0,0 +1,45 @@
++--- a/drivers/net/wireless/ath/ath11k/reg.c
+++++ b/drivers/net/wireless/ath/ath11k/reg.c
++@@ -29,6 +29,27 @@
++ 	}
++ };
++ 
+++static const struct ieee80211_regdomain ath11k_refeq_regd = {
+++	.n_reg_rules = 4,
+++	.alpha2 = "PA",
+++	.dfs_region = NL80211_DFS_FCC,
+++	.reg_rules = {
+++		REG_RULE(2402, 2482, 40, 0, 30, 0),
+++		REG_RULE(5150, 5350, 160, 0, 30, 0),
+++		REG_RULE(5470, 5730, 160, 0, 30, 0),
+++		REG_RULE(5735, 5835, 80, 0, 30, 0),
+++	}
+++};
+++
++ static bool ath11k_regdom_changes(struct ath11k *ar, char *alpha2)
++ {
++ 	const struct ieee80211_regdomain *regd;
++@@ -246,8 +267,16 @@
++ 
++ 	spin_lock_bh(&ab->base_lock);
++ 
+++	if (ab->hw_rev == ATH11K_HW_QCN9074_HW10 ||
+++	    ab->hw_rev == ATH11K_HW_IPQ9574) {
+++		regd = (struct ieee80211_regdomain *)&ath11k_refeq_regd;
+++	} else if (ab->new_regd[pdev_id]) {
++ 		/* Prefer the latest regd update over default if it's available */
++ 		regd = ab->new_regd[pdev_id];
++ 	} else {
++ 		/* Apply the regd received during init through
+diff --git a/package/kernel/mac80211/patches/ath11k/999-ath11k-reduce-rx-monitor-rings.patch b/package/kernel/mac80211/patches/ath11k/999-ath11k-reduce-rx-monitor-rings.patch
+new file mode 100644
+index 00000000..44444444
+--- /dev/null
++++ b/package/kernel/mac80211/patches/ath11k/999-ath11k-reduce-rx-monitor-rings.patch
+@@ -0,0 +1,25 @@
++--- a/drivers/net/wireless/ath/ath11k/dp.h
+++++ b/drivers/net/wireless/ath/ath11k/dp.h
++@@ -218,10 +218,10 @@
++-#define DP_RXDMA_BUF_RING_SIZE		4096
+++#define DP_RXDMA_BUF_RING_SIZE		2048
++ #define DP_RXDMA_REFILL_RING_SIZE	2048
++ #define DP_RXDMA_ERR_DST_RING_SIZE	1024
++-#define DP_RXDMA_MON_STATUS_RING_SIZE	1024
++-#define DP_RXDMA_MONITOR_BUF_RING_SIZE	4096
++-#define DP_RXDMA_MONITOR_DST_RING_SIZE	2048
++-#define DP_RXDMA_MONITOR_DESC_RING_SIZE	4096
+++#define DP_RXDMA_MON_STATUS_RING_SIZE	256
+++#define DP_RXDMA_MONITOR_BUF_RING_SIZE	256
+++#define DP_RXDMA_MONITOR_DST_RING_SIZE	512
+++#define DP_RXDMA_MONITOR_DESC_RING_SIZE	256
++ 
++ #define DP_RX_RELEASE_RING_NUM	3
++ 
+-- 
+2.34.1
