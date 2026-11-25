@@ -14,7 +14,7 @@ dns:
     - 127.0.0.1
   port: 5335
   anonymize_client_ip: false
-  protection_enabled: true
+  protection_enabled: false
   blocking_mode: default
   blocking_ipv4: ""
   blocking_ipv6: ""

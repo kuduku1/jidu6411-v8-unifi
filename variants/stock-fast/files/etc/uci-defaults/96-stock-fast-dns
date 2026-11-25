@@ -22,7 +22,7 @@ uci add_list dhcp.@dnsmasq[0].server='2001:4860:4860::8888'
 
 uci commit dhcp
 
-# ── Enable Adblock-Fast ──
-[ -x /etc/init.d/adblock-fast ] && /etc/init.d/adblock-fast enable
+# ── Keep Adblock-Fast disabled by default (enable from LuCI when desired) ──
+[ -x /etc/init.d/adblock-fast ] && /etc/init.d/adblock-fast disable
 
 exit 0

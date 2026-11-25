@@ -1,5 +1,5 @@
 config adblock-fast 'config'
-	option enabled '1'
+	option enabled '0'
 	list allowed_domain 'cdn.jsdelivr.net'
 	list allowed_domain 'tampermonkey.net'
 	list allowed_domain 'sonyliv.com'

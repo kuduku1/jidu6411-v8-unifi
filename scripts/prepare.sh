@@ -30,6 +30,10 @@ if [ -n "$PR_NUMBER" ]; then
   PR_SHA="$(git rev-parse FETCH_HEAD)"
   git merge --no-edit FETCH_HEAD
 fi
+dtsi="target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11.dtsi"
+if [ -f "$dtsi" ] && ! grep -q '&q6_region' "$dtsi"; then
+  printf '\n&q6_region {\n\tstatus = "okay";\n};\n' >> "$dtsi"
+fi
 cat > "$ROOT/build-info.env" <<EOF
 UPSTREAM_SHA=$UPSTREAM_SHA
 PR_NUMBER=$PR_NUMBER

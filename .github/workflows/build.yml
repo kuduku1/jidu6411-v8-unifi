@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Semantic version tag (e.g. v1.0.3)"
-        default: "v1.0.3"
+        description: "Semantic version tag (e.g. v1.0.4)"
+        default: "v1.0.4"
         required: true
       variant:
         description: "Which image(s) to build"
@@ -25,8 +25,8 @@ env:
   IWINFO_PRS: "51"
   TARGET: qualcommbe
   SUBTARGET: ipq95xx
-  SKUS: "6111 6411 6611 6711 6811 6911"
-  EXPECTED_DEVICES: "6"
+  SKUS: "6411"
+  EXPECTED_DEVICES: "1"
 
 jobs:
   build:
