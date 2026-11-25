@@ -1,0 +1,3 @@
+# Variant: stock-fast (native adblock-fast via dnsmasq.servers)
+adblock-fast
+luci-app-adblock-fast

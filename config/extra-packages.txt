@@ -1,0 +1,68 @@
+# One package per line. "#" starts a comment. A leading "-" removes a package.
+
+# --- TLS / CA ---
+ca-bundle
+
+# --- Full Wi-Fi (802.11k/v/r, WPA3/SAE) ---
+-wpad-basic-mbedtls
+wpad-mbedtls
+
+# --- USB storage ---
+kmod-usb-storage
+kmod-usb-storage-uas
+kmod-usb-storage-extras
+block-mount
+blkid
+e2fsprogs
+fdisk
+dosfstools
+usbutils
+
+# --- Filesystems and charset support for USB drives ---
+kmod-fs-ext4
+kmod-fs-vfat
+kmod-fs-exfat
+kmod-fs-ntfs3
+ntfs-3g
+kmod-nls-utf8
+kmod-nls-cp437
+kmod-nls-iso8859-1
+
+# --- USB network adapters / phone tethering ---
+kmod-usb-net-cdc-ether
+kmod-usb-net-cdc-ncm
+kmod-usb-net-rndis
+kmod-usb-net-rtl8152
+kmod-usb-net-asix-ax88179
+kmod-usb-net-ipheth
+kmod-usb-net-huawei-cdc-ncm
+usb-modeswitch
+
+# --- Network, Offloading, Multi-WAN, SQM, NAS ---
+kmod-wireguard
+kmod-zram
+kmod-nat46
+kmod-nft-offload
+kmod-nft-bridge
+kmod-sched-act-police
+kmod-sched-cake
+kmod-ledtrig-timer
+mwan3
+luci-app-mwan3
+samba4-server
+luci-app-samba4
+sqm-scripts
+luci-app-sqm
+
+# --- Tools & Utilities ---
+gawk
+grep
+sed
+coreutils-sort
+htop
+nano
+curl
+iperf3
+ethtool
+ip-full
+zram-swap

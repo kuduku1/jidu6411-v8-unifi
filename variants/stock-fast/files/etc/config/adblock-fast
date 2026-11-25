@@ -1,0 +1,77 @@
+config adblock-fast 'config'
+	option enabled '1'
+	list allowed_domain 'cdn.jsdelivr.net'
+	list allowed_domain 'tampermonkey.net'
+	list allowed_domain 'sonyliv.com'
+	option allow_non_ascii '0'
+	option canary_domains_icloud '0'
+	option canary_domains_mozilla '0'
+	option compressed_cache '0'
+	option curl_additional_param ''
+	option curl_max_file_size '30000000'
+	option curl_retry '3'
+	option debug_init_script '0'
+	option debug_performance '0'
+	option dns 'dnsmasq.servers'
+	list dnsmasq_instance '*'
+	option download_connect_timeout '10'
+	option download_timeout '15'
+	option download_allow_insecure '1'
+	option force_dns '0'
+	option parallel_downloads '4'
+	option pause_timeout '60'
+	option procd_trigger_wan6 '0'
+	option procd_boot_wan_timeout '60'
+	option verbosity '2'
+	option heartbeat_domain 'heartbeat.mossdef.org'
+	option heartbeat_sleep_timeout '10'
+	option sanity_check '1'
+	option update_config_sizes '1'
+
+config file_url
+	option name 'Hagezi - Multi PRO'
+	option url 'https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/pro-onlydomains.txt'
+	option action 'block'
+	option enabled '1'
+
+config file_url
+	option name 'Hagezi - TIF Mini'
+	option url 'https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/tif.mini-onlydomains.txt'
+	option action 'block'
+	option enabled '1'
+
+config file_url
+	option name 'Hagezi - Gambling Mini'
+	option url 'https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/gambling.mini-onlydomains.txt'
+	option action 'block'
+	option enabled '1'
+
+config file_url
+	option name 'Hagezi - Native TikTok'
+	option url 'https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/native.tiktok-onlydomains.txt'
+	option action 'block'
+	option enabled '1'
+
+config file_url
+	option name 'Hagezi - Native Huawei'
+	option url 'https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/native.huawei-onlydomains.txt'
+	option action 'block'
+	option enabled '1'
+
+config file_url
+	option name 'Hagezi - Native Roku'
+	option url 'https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/native.roku-onlydomains.txt'
+	option action 'block'
+	option enabled '1'
+
+config file_url
+	option name 'Hagezi - Native Vivo'
+	option url 'https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/native.vivo-onlydomains.txt'
+	option action 'block'
+	option enabled '1'
+
+config file_url
+	option name 'Hagezi - Native Xiaomi'
+	option url 'https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/native.xiaomi-onlydomains.txt'
+	option action 'block'
+	option enabled '1'
