@@ -100,23 +100,23 @@ filters:
     id: 5
   - enabled: true
     url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.tiktok.txt
-    name: HaGeZi Native Tracker: TikTok
+    name: "HaGeZi Native Tracker: TikTok"
     id: 6
   - enabled: true
     url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.huawei.txt
-    name: HaGeZi Native Tracker: Huawei
+    name: "HaGeZi Native Tracker: Huawei"
     id: 7
   - enabled: true
     url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.roku.txt
-    name: HaGeZi Native Tracker: Roku
+    name: "HaGeZi Native Tracker: Roku"
     id: 8
   - enabled: true
     url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.vivo.txt
-    name: HaGeZi Native Tracker: Vivo
+    name: "HaGeZi Native Tracker: Vivo"
     id: 9
   - enabled: true
     url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/native.xiaomi.txt
-    name: HaGeZi Native Tracker: Xiaomi
+    name: "HaGeZi Native Tracker: Xiaomi"
     id: 10
 whitelist_filters: []
 user_rules:

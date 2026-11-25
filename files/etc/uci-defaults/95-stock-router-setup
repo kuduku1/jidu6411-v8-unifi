@@ -139,4 +139,16 @@ uci -q commit firewall
 uci -q set uhttpd.main.http_keepalive='0'
 uci -q commit uhttpd
 
+# ── 10. IPv6 Relay Mode (Relay upstream /64 prefix to LAN/Wi-Fi clients) ──
+uci -q set dhcp.wan6=dhcp
+uci -q set dhcp.wan6.interface='wan6'
+uci -q set dhcp.wan6.master='1'
+uci -q set dhcp.wan6.ra='relay'
+uci -q set dhcp.wan6.dhcpv6='relay'
+uci -q set dhcp.wan6.ndp='relay'
+uci -q set dhcp.lan.ra='relay'
+uci -q set dhcp.lan.dhcpv6='relay'
+uci -q set dhcp.lan.ndp='relay'
+uci -q commit dhcp
+
 exit 0

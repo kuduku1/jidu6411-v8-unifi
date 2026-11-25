@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Semantic version tag (e.g. v1.0.4)"
-        default: "v1.0.4"
+        description: "Semantic version tag (e.g. v1.0.5)"
+        default: "v1.0.5"
         required: true
       variant:
         description: "Which image(s) to build"
@@ -98,13 +98,13 @@ jobs:
           find "$d" -maxdepth 1 -type f \
             \( -name '*sysupgrade*' -o -name '*initramfs*' -o -name '*.manifest' -o -name 'sha256sums' \) \
             -exec cp {} "out/${{ matrix.variant }}/" \;
-          (cd "out/${{ matrix.variant }}" && sha256sum *sysupgrade* *initramfs* 2>/dev/null > "SHA256SUMS-${{ inputs.version || 'v1.0.3' }}-${{ matrix.variant }}.txt" || true)
+          (cd "out/${{ matrix.variant }}" && sha256sum *sysupgrade* *initramfs* 2>/dev/null > "SHA256SUMS-${{ inputs.version || 'v1.0.5' }}-${{ matrix.variant }}.txt" || true)
           ls -lh "out/${{ matrix.variant }}"
 
       - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
-          name: jidu6411-${{ inputs.version || 'v1.0.3' }}-${{ matrix.variant }}
+          name: jidu6411-${{ inputs.version || 'v1.0.5' }}-${{ matrix.variant }}
           path: out/${{ matrix.variant }}
           retention-days: 30
 

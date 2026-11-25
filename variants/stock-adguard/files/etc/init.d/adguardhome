@@ -32,6 +32,7 @@ start_service() {
 	procd_set_param stderr 1
 
 	if id -u adguardhome >/dev/null 2>&1; then
+		chown -R adguardhome:adguardhome /etc/adguardhome 2>/dev/null || true
 		procd_set_param user adguardhome
 		procd_set_param group adguardhome
 	fi
